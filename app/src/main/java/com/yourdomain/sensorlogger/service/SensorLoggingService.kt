@@ -11,7 +11,9 @@ import com.yourdomain.sensorlogger.sensors.BarometerController
 import com.yourdomain.sensorlogger.sensors.GpsController
 import com.yourdomain.sensorlogger.sensors.SensorController
 import com.yourdomain.sensorlogger.sensors.CameraController
+import com.yourdomain.sensorlogger.sensors.AudioRecorder
 import com.yourdomain.sensorlogger.network.DataUploader
+import com.yourdomain.sensorlogger.util.SensorConfig
 
 // SensorLoggingService: Foreground service for continuous sensor/audio/location logging
 // - Acquires WakeLock via WakeLockManager
@@ -30,12 +32,12 @@ class SensorLoggingService : Service() {
     private lateinit var dataUploader: DataUploader
 
     private val handler = Handler(Looper.getMainLooper())
-    private val thirtyMinuteTask = object : Runnable {
+    private val scheduledTask = object : Runnable {
         override fun run() {
-            Log.d(TAG, "30-minute task running")
+            Log.d(TAG, "Scheduled task running")
             cameraController.takePhoto()
             dataUploader.launchUpload()
-            handler.postDelayed(this, 30 * 60 * 1000)
+            handler.postDelayed(this, SensorConfig.PHOTO_INTERVAL)
         }
     }
 
@@ -61,9 +63,15 @@ class SensorLoggingService : Service() {
         sensorController.start()
         gpsController.start()
         barometerController.start()
-        audioRecorder.start()
-        cameraController.start()
-        handler.post(thirtyMinuteTask)
+        
+        if (SensorConfig.ENABLE_AUDIO) {
+            audioRecorder.start()
+        }
+        if (SensorConfig.ENABLE_CAMERA) {
+            cameraController.start()
+        }
+        
+        handler.post(scheduledTask)
         // TODO: Start other sensor controllers and schedulers here
 
         return START_STICKY
@@ -79,7 +87,7 @@ class SensorLoggingService : Service() {
         barometerController.stop()
         audioRecorder.stop()
         cameraController.stop()
-        handler.removeCallbacks(thirtyMinuteTask)
+        handler.removeCallbacks(scheduledTask)
         // TODO: Stop other sensor controllers here
     }
 

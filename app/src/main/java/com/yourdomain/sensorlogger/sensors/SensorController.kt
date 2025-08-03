@@ -8,6 +8,8 @@ import android.hardware.SensorManager
 import android.util.Log
 import com.yourdomain.sensorlogger.data.DataRepository
 import com.yourdomain.sensorlogger.data.models.SensorData
+import com.yourdomain.sensorlogger.util.SensorConfig
+import com.yourdomain.sensorlogger.util.SensorDataManager
 
 class SensorController(context: Context, private val dataRepository: DataRepository) : SensorEventListener {
     private val TAG = "SensorController"
@@ -21,13 +23,19 @@ class SensorController(context: Context, private val dataRepository: DataReposit
     }
 
     fun start() {
-        gyroSensor?.also { sensor ->
-            sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+        if (SensorConfig.ENABLE_GYROSCOPE) {
+            gyroSensor?.also { sensor ->
+                sensorManager.registerListener(this, sensor, SensorConfig.GYROSCOPE_DELAY)
+                Log.d(TAG, "Gyroscope listener registered")
+            }
         }
-        accelSensor?.also { sensor ->
-            sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+        if (SensorConfig.ENABLE_ACCELEROMETER) {
+            accelSensor?.also { sensor ->
+                sensorManager.registerListener(this, sensor, SensorConfig.ACCELEROMETER_DELAY)
+                Log.d(TAG, "Accelerometer listener registered")
+            }
         }
-        Log.d(TAG, "Sensor listeners registered")
+        Log.d(TAG, "Sensor listeners registered with configurable rates")
     }
 
     fun stop() {
@@ -51,17 +59,23 @@ class SensorController(context: Context, private val dataRepository: DataReposit
                 gyroX = event.values[0]
                 gyroY = event.values[1]
                 gyroZ = event.values[2]
+                // Send to UI
+                SensorDataManager.updateGyroscopeData(gyroX, gyroY, gyroZ)
             }
             Sensor.TYPE_ACCELEROMETER -> {
                 accelX = event.values[0]
                 accelY = event.values[1]
                 accelZ = event.values[2]
+                // Send to UI
+                SensorDataManager.updateAccelerometerData(accelX, accelY, accelZ)
             }
         }
         
         val sensorData = SensorData(timestamp, gyroX, gyroY, gyroZ, accelX, accelY, accelZ)
         dataRepository.addSensorData(sensorData) // Assuming this method exists
-        Log.d(TAG, "Sensor data recorded: $sensorData")
+        if (SensorConfig.LOG_SENSOR_DATA) {
+            Log.d(TAG, "Sensor data recorded: $sensorData")
+        }
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {

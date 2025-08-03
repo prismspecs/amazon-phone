@@ -8,6 +8,8 @@ import android.hardware.SensorManager
 import android.util.Log
 import com.yourdomain.sensorlogger.data.DataRepository
 import com.yourdomain.sensorlogger.data.models.BarometerData
+import com.yourdomain.sensorlogger.util.SensorConfig
+import com.yourdomain.sensorlogger.util.SensorDataManager
 
 class BarometerController(context: Context, private val dataRepository: DataRepository) : SensorEventListener {
     private val TAG = "BarometerController"
@@ -19,9 +21,11 @@ class BarometerController(context: Context, private val dataRepository: DataRepo
     }
 
     fun start() {
-        pressureSensor?.also { sensor ->
-            sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
-            Log.d(TAG, "Barometer listener registered")
+        if (SensorConfig.ENABLE_BAROMETER) {
+            pressureSensor?.also { sensor ->
+                sensorManager.registerListener(this, sensor, SensorConfig.BAROMETER_DELAY)
+                Log.d(TAG, "Barometer listener registered with configurable rate")
+            }
         }
     }
 
@@ -37,6 +41,9 @@ class BarometerController(context: Context, private val dataRepository: DataRepo
             val barometerData = BarometerData(System.currentTimeMillis(), pressure, altitude)
             dataRepository.addBarometerData(barometerData) // Assuming this method exists
             Log.d(TAG, "Barometer data recorded: $barometerData")
+            
+            // Send to UI
+            SensorDataManager.updateBarometerData(pressure, altitude)
         }
     }
 

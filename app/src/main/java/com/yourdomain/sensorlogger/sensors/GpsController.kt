@@ -7,6 +7,8 @@ import android.util.Log
 import com.google.android.gms.location.*
 import com.yourdomain.sensorlogger.data.DataRepository
 import com.yourdomain.sensorlogger.data.models.LocationData
+import com.yourdomain.sensorlogger.util.SensorConfig
+import com.yourdomain.sensorlogger.util.SensorDataManager
 
 class GpsController(
     private val context: Context,
@@ -18,9 +20,13 @@ class GpsController(
 
     @SuppressLint("MissingPermission")
     fun start() {
+        if (!SensorConfig.ENABLE_GPS) {
+            Log.d(TAG, "GPS disabled in config")
+            return
+        }
+        
         locationCallback = object : LocationCallback() {
-            override fun onLocationResult(locationResult: LocationResult?) {
-                locationResult ?: return
+            override fun onLocationResult(locationResult: LocationResult) {
                 for (location in locationResult.locations) {
                     val locationData = LocationData(
                         System.currentTimeMillis(),
@@ -30,14 +36,17 @@ class GpsController(
                     )
                     dataRepository.addLocationData(locationData) // Assuming this method exists
                     Log.d(TAG, "Location recorded: $locationData")
+                    
+                    // Send to UI
+                    SensorDataManager.updateGpsData(location.latitude, location.longitude, location.accuracy)
                 }
             }
         }
 
         val locationRequest = LocationRequest.create().apply {
-            interval = 10000
-            fastestInterval = 5000
-            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+            interval = SensorConfig.GPS_UPDATE_INTERVAL
+            fastestInterval = SensorConfig.GPS_FASTEST_INTERVAL
+            priority = SensorConfig.GPS_ACCURACY
         }
 
         fusedLocationClient.requestLocationUpdates(

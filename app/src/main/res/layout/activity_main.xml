@@ -1,21 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android.orientation="vertical"
-    android:gravity="center">
+    android:layout_height="match_parent">
 
-    <Button
-        android:id="@+id/start_service_button"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Start Logging Service" />
+        android:orientation="vertical"
+        android:padding="16dp">
 
-    <TextView
-        android:id="@+id/status_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Permissions not granted." />
+        <Button
+            android:id="@+id/start_service_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="Start Logging Service" />
 
-</LinearLayout> 
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_gravity="center"
+            android:text="Permissions not granted." />
+
+        <!-- Sensor Data Display -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Real-time Sensor Data:"
+            android:textStyle="bold"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/accelerometer_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Accelerometer: X=0.0, Y=0.0, Z=0.0"
+            android:fontFamily="monospace"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/gyroscope_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Gyroscope: X=0.0, Y=0.0, Z=0.0"
+            android:fontFamily="monospace"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/barometer_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Barometer: Pressure=0.0 hPa, Altitude=0.0m"
+            android:fontFamily="monospace"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/gps_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="GPS: Lat=0.0, Lon=0.0, Accuracy=0.0m"
+            android:fontFamily="monospace"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/last_update_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Last Update: Never"
+            android:fontFamily="monospace"
+            android:textSize="10sp"
+            android:textColor="#666666" />
+
+    </LinearLayout>
+</ScrollView> 
