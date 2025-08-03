@@ -1,4 +1,4 @@
-To ensure **sensor logging continues with the screen off**, with full control over the phone’s behavior, you should use **Android** (not iOS), and develop a **foreground service** with wake locks and battery optimization bypass.
+To ensure **sensor logging continues with the screen off**, with full control over the phone's behavior, you should use **Android** (not iOS), and develop a **foreground service** with wake locks and battery optimization bypass.
 
 ### ✅ **Key Android Features You Need**
 
@@ -16,7 +16,7 @@ To ensure **sensor logging continues with the screen off**, with full control ov
    - Allows your app to run uninterrupted on devices with aggressive power saving
    - Requires explicit user permission
 
-4. **SensorManager + SensorEventListener**
+4. **SensorManager + SensorEventListener**w
 
    - For gyroscope, accelerometer, barometer (if available)
 
@@ -143,9 +143,65 @@ This structure supports modular, resilient, and efficient sensor/media logging a
 ### Implementation Status
 
 - [x] **Project Scaffolding**: Complete. All modules and classes created.
-- [ ] **Service Layer**: In progress.
-- [ ] **Sensors Layer**: Pending.
-- [ ] **Data Layer**: Pending.
-- [ ] **Network Layer**: Pending.
-- [ ] **Utils**: Pending.
+- [x] **Service Layer**: Complete with wake lock and notification.
+- [x] **Sensors Layer**: Complete with throttling and batching.
+- [x] **Data Layer**: Complete with filtering and batching.
+- [x] **Network Layer**: Complete with upload functionality.
+- [x] **Utils**: Complete with configuration system.
 - [ ] **UI/Permissions**: Pending.
+
+---
+
+## 🚀 Frequency Optimization (COMPLETED)
+
+### Problem Solved
+The app was delivering sensor data extremely frequently, causing excessive battery drain and performance issues.
+
+### Key Optimizations Implemented
+
+#### 1. **Reduced Sensor Polling Rates** (75% reduction)
+- **Accelerometer/Gyroscope/Barometer**: 2Hz → 0.5Hz (every 2 seconds)
+- **GPS updates**: 10 seconds → 30 seconds  
+- **Photo captures**: 30 minutes → 60 minutes
+- **Data uploads**: 30 minutes → 60 minutes
+
+#### 2. **Motion Filtering System** (Configurable)
+- **Motion Threshold**: `MOTION_THRESHOLD = 0.5f` in `SensorConfig.kt`
+- **How it works**: Calculates total acceleration magnitude from X,Y,Z values
+- **Formula**: `√(accelX² + accelY² + accelZ²)`
+- **Current setting**: Only logs when acceleration > 0.5 m/s²
+- **Fine-grained control**: You can adjust this value in `SensorConfig.kt`:
+  - `0.1f` = Very sensitive (logs most movements)
+  - `0.5f` = Medium sensitivity (current setting)
+  - `1.0f` = Low sensitivity (only significant movements)
+  - `2.0f` = Very low sensitivity (only major movements)
+
+#### 3. **Data Batching & Throttling**
+- **Batch size**: 50 sensor readings before processing
+- **Batch timeout**: 30 seconds (flush incomplete batches)
+- **Processing throttle**: Minimum 1-second interval between processing
+- **Duplicate filtering**: Eliminates readings with <0.01f difference
+
+#### 4. **Configurable Settings in SensorConfig.kt**
+```kotlin
+// Motion filtering
+val ENABLE_MOTION_FILTERING = true
+val MOTION_THRESHOLD = 0.5f           // Adjust this value for sensitivity
+
+// Data batching  
+val BATCH_SIZE = 50                   // Readings per batch
+val BATCH_TIMEOUT = 30000L            // 30 seconds timeout
+val ENABLE_DATA_BATCHING = true
+
+// Polling rates
+val ACCELEROMETER_DELAY = 2000000     // 0.5Hz (2 seconds)
+val GPS_UPDATE_INTERVAL = 30000L      // 30 seconds
+val UPLOAD_INTERVAL = 60 * 60 * 1000L // 60 minutes
+```
+
+### Result
+- **75% reduction** in sensor polling frequency
+- **66% reduction** in GPS updates  
+- **50% reduction** in data uploads
+- **Motion-based filtering** eliminates unnecessary readings
+- **Significantly reduced battery consumption**

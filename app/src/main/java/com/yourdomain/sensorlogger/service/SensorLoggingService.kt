@@ -34,10 +34,10 @@ class SensorLoggingService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val scheduledTask = object : Runnable {
         override fun run() {
-            Log.d(TAG, "Scheduled task running")
+            Log.d(TAG, "Scheduled task running - reduced frequency")
             cameraController.takePhoto()
             dataUploader.launchUpload()
-            handler.postDelayed(this, SensorConfig.PHOTO_INTERVAL)
+            handler.postDelayed(this, SensorConfig.UPLOAD_INTERVAL) // Use UPLOAD_INTERVAL instead of PHOTO_INTERVAL
         }
     }
 
@@ -56,7 +56,7 @@ class SensorLoggingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "Service started")
+        Log.d(TAG, "Service started with reduced data frequency")
         val notification = NotificationHelper.createNotification(this)
         startForeground(1, notification)
 
@@ -71,8 +71,8 @@ class SensorLoggingService : Service() {
             cameraController.start()
         }
         
-        handler.post(scheduledTask)
-        // TODO: Start other sensor controllers and schedulers here
+        // Schedule tasks with reduced frequency
+        handler.postDelayed(scheduledTask, SensorConfig.UPLOAD_INTERVAL)
 
         return START_STICKY
     }
@@ -88,7 +88,9 @@ class SensorLoggingService : Service() {
         audioRecorder.stop()
         cameraController.stop()
         handler.removeCallbacks(scheduledTask)
-        // TODO: Stop other sensor controllers here
+        
+        // Properly shutdown DataRepository
+        dataRepository.shutdown()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
