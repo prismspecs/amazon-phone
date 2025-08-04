@@ -22,11 +22,6 @@ class PhoneDataVisualizer {
         this.gyroBias = { x: 0, y: 0, z: 0 };
         this.biasCalculated = false;
         
-        // Rotation tracking
-        this.currentRotation = { x: 0, y: 0, z: 0 };
-        this.lastGyroData = { x: 0, y: 0, z: 0 };
-        this.lastUpdateTime = 0;
-        
         // UI elements
         this.playBtn = document.getElementById('play-btn');
         this.pauseBtn = document.getElementById('pause-btn');
@@ -314,9 +309,6 @@ class PhoneDataVisualizer {
         this.currentData = null;
         this.targetData = null;
         this.interpolationProgress = 0;
-        this.currentRotation = { x: 0, y: 0, z: 0 };
-        this.lastGyroData = { x: 0, y: 0, z: 0 };
-        this.lastUpdateTime = 0;
         
         // Recalculate bias if data is loaded
         if (this.sensorData.length > 0) {
