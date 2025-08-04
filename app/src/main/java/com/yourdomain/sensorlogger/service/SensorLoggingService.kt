@@ -52,7 +52,7 @@ class SensorLoggingService : Service() {
         barometerController = BarometerController(this, dataRepository)
         audioRecorder = AudioRecorder(this, dataRepository)
         cameraController = CameraController(this, dataRepository)
-        dataUploader = DataUploader(dataRepository)
+        dataUploader = DataUploader(this, dataRepository)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

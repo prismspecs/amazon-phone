@@ -166,10 +166,10 @@ The app was delivering sensor data extremely frequently, causing excessive batte
 - **Data uploads**: 30 minutes → 60 minutes
 
 #### 2. **Motion Filtering System** (Configurable)
-- **Motion Threshold**: `MOTION_THRESHOLD = 0.5f` in `SensorConfig.kt`
+- **Motion Threshold**: `MOTION_THRESHOLD = 0.1f` in `SensorConfig.kt`
 - **How it works**: Calculates total acceleration magnitude from X,Y,Z values
 - **Formula**: `√(accelX² + accelY² + accelZ²)`
-- **Current setting**: Only logs when acceleration > 0.5 m/s²
+- **Current setting**: Only logs when acceleration > 0.1 m/s²
 - **Fine-grained control**: You can adjust this value in `SensorConfig.kt`:
   - `0.1f` = Very sensitive (logs most movements)
   - `0.5f` = Medium sensitivity (current setting)
@@ -186,7 +186,7 @@ The app was delivering sensor data extremely frequently, causing excessive batte
 ```kotlin
 // Motion filtering
 val ENABLE_MOTION_FILTERING = true
-val MOTION_THRESHOLD = 0.5f           // Adjust this value for sensitivity
+val MOTION_THRESHOLD = 0.1f           // Adjust this value for sensitivity
 
 // Data batching  
 val BATCH_SIZE = 50                   // Readings per batch
@@ -205,3 +205,98 @@ val UPLOAD_INTERVAL = 60 * 60 * 1000L // 60 minutes
 - **50% reduction** in data uploads
 - **Motion-based filtering** eliminates unnecessary readings
 - **Significantly reduced battery consumption**
+
+---
+
+## 🌐 Server Setup (COMPLETED)
+
+### Minimal Node.js Server with CapRover Deployment
+
+A complete server setup is included in the `server/` directory for receiving sensor data.
+
+#### **Server Features:**
+- **Express.js** with CORS support
+- **SQLite database** for data persistence
+- **File upload** support for audio/photos
+- **Health check** and **data summary** endpoints
+- **Docker** containerization
+- **CapRover** deployment ready
+
+#### **Server Endpoints:**
+- `POST /upload` - Receive sensor data (JSON)
+- `POST /upload-files` - Receive audio/photo files
+- `GET /health` - Health check
+- `GET /summary` - Data statistics
+
+#### **Deployment Steps:**
+
+1. **Push to Git:**
+   ```bash
+   git add server/
+   git commit -m "Add sensor data server"
+   git push origin main
+   ```
+
+2. **Deploy to CapRover:**
+   - Go to CapRover dashboard
+   - Click "One-Click Apps" → "Git"
+   - Enter your Git repository URL
+   - Set app name (e.g., `sensor-server`)
+   - Deploy
+
+3. **Update Android App:**
+   - Edit `DataUploader.kt` line 15:
+   ```kotlin
+   private val endpoint = "https://your-app-name.your-domain.com/upload"
+   ```
+
+#### **Server Database Tables:**
+- `sensor_data` - Gyroscope and accelerometer readings
+- `location_data` - GPS coordinates  
+- `barometer_data` - Pressure and altitude
+- `audio_files` - Audio file metadata
+- `photo_files` - Photo file metadata
+
+#### **Data Format:**
+```json
+{
+  "deviceId": "android-123456",
+  "sensors": [
+    {
+      "timestamp": 1640995200000,
+      "gyroX": 0.1, "gyroY": 0.2, "gyroZ": 0.3,
+      "accelX": 9.8, "accelY": 0.1, "accelZ": 0.2
+    }
+  ],
+  "locations": [
+    {
+      "timestamp": 1640995200000,
+      "latitude": 40.7128, "longitude": -74.0060, "accuracy": 5.0
+    }
+  ]
+}
+```
+
+This server setup provides a complete, scalable solution for receiving and storing sensor data from your Android app.
+
+---
+
+## 📋 Development Notes & Warnings
+
+### ⚠️ **Important Configuration Notes**
+
+#### **CapRover captain-definition**
+- **ALWAYS use `"schemaVersion": 2`** (NOT `"schema": 2`)
+- The captain-definition file must use `schemaVersion` property
+- Do not automatically rename or change this property
+- This is critical for proper CapRover deployment
+
+#### **Persistent Storage Setup**
+- Add persistent directory in CapRover dashboard: `/app/data` → `sensor-data`
+- Database path: `/app/data/sensor_data.db`
+- Upload directory: `/app/data/uploads`
+
+#### **Deployment Files**
+- `sensor-server.tar.gz` is in `.gitignore` (should not be committed)
+- Use `./deploy.sh` in `server/` directory to create deployment package
+- Always verify captain-definition uses `schemaVersion` before deploying

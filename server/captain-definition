@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 2,
+  "dockerfilePath": "./Dockerfile",
+  "volumes": [
+    {
+      "containerPath": "/app/data",
+      "hostPath": "/captain/data/sensor-server"
+    }
+  ],
+  "envVars": [
+    {
+      "key": "DB_PATH",
+      "value": "/app/data/sensor_data.db"
+    },
+    {
+      "key": "UPLOAD_DIR", 
+      "value": "/app/data/uploads"
+    }
+  ]
+} 

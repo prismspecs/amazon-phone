@@ -53,8 +53,8 @@ object SensorConfig {
     // Photo capture interval (in milliseconds) - INCREASED
     val PHOTO_INTERVAL = 60 * 60 * 1000L  // 60 minutes (was 30 minutes)
     
-    // Data upload interval (in milliseconds) - INCREASED
-    val UPLOAD_INTERVAL = 60 * 60 * 1000L // 60 minutes (was 30 minutes)
+    // Data upload interval (in milliseconds) - TESTING: 2 minutes
+    val UPLOAD_INTERVAL = 2 * 60 * 1000L // 2 minutes (TESTING ONLY - reset to 60 minutes later)
     
     // Data batching settings - NEW
     val BATCH_SIZE = 50                   // Number of sensor readings to batch before processing

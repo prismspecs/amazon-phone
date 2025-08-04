@@ -72,7 +72,7 @@ class DataRepository {
         }
         
         // Motion filtering - only log when significant motion detected
-        if (SensorConfig.ENABLE_MOTION_FILTERING && data.accelX != null) {
+        if (SensorConfig.ENABLE_MOTION_FILTERING && data.accelX != null && data.accelY != null && data.accelZ != null) {
             val acceleration = Math.sqrt((data.accelX * data.accelX + data.accelY * data.accelY + data.accelZ * data.accelZ).toDouble())
             if (acceleration < SensorConfig.MOTION_THRESHOLD) {
                 return true // Filter out low motion
@@ -84,6 +84,7 @@ class DataRepository {
             if (data.accelX != null && data.accelY != null && data.accelZ != null) {
                 val lastData = lastAccelerometerData
                 if (lastData != null && 
+                    lastData.accelX != null && lastData.accelY != null && lastData.accelZ != null &&
                     Math.abs(data.accelX - lastData.accelX) < 0.01f &&
                     Math.abs(data.accelY - lastData.accelY) < 0.01f &&
                     Math.abs(data.accelZ - lastData.accelZ) < 0.01f) {
