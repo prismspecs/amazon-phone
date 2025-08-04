@@ -102,7 +102,7 @@ class PhoneDataVisualizer {
     }
 
     createPhoneModel() {
-        // Cardboard box (thicker cube)
+        // Phone body (brown box)
         const boxGeometry = new THREE.BoxGeometry(1, 0.6, 2); 
         const boxMaterial = new THREE.MeshPhongMaterial({ 
             color: 0x8B4513, // Brown color for cardboard
@@ -380,9 +380,9 @@ class PhoneDataVisualizer {
             const gyroMagnitude = Math.sqrt(gyroX * gyroX + gyroY * gyroY + gyroZ * gyroZ);
             
             // Use gyroscope data to affect screen glow (movement indicator)
-            const activity = gyroMagnitude * 10; // Scale for visibility
-            const intensity = Math.min(activity, 1);
-            this.phoneModel.material.emissive.setHex(0x111111 + Math.floor(intensity * 0x444444));
+            // const activity = gyroMagnitude * 10; // Scale for visibility
+            // const intensity = Math.min(activity, 1);
+            // this.phoneModel.material.emissive.setHex(0x111111 + Math.floor(intensity * 0x444444));
         }
     }
 
