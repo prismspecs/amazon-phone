@@ -23,7 +23,7 @@ object SensorConfig {
     val ENABLE_AUDIO = true
     val ENABLE_CAMERA = false  // Disabled due to service complexity
     
-    // Sensor polling rates (in microseconds) - REDUCED FREQUENCY
+    // Sensor polling rates (in microseconds) - INCREASED FREQUENCY
     // Available options:
     // SENSOR_DELAY_FASTEST = 0 (as fast as possible)
     // SENSOR_DELAY_GAME = 20000 (50Hz)
@@ -32,39 +32,39 @@ object SensorConfig {
     // Custom delay = 1000000 (1Hz - every second)
     // Custom delay = 2000000 (0.5Hz - every 2 seconds)
     
-    // Accelerometer polling rate - REDUCED from 2Hz to 0.5Hz
-    val ACCELEROMETER_DELAY = 2000000  // 0.5Hz (2 seconds) - every 2 seconds
+    // Accelerometer polling rate - INCREASED for continuous data
+    val ACCELEROMETER_DELAY = 20000  // 50Hz (20ms) - every 20ms for smooth data
     
-    // Gyroscope polling rate - REDUCED from 2Hz to 0.5Hz
-    val GYROSCOPE_DELAY = 2000000      // 0.5Hz (2 seconds) - every 2 seconds
+    // Gyroscope polling rate - INCREASED for continuous data
+    val GYROSCOPE_DELAY = 20000      // 50Hz (20ms) - every 20ms for smooth data
     
-    // Barometer polling rate - REDUCED from 2Hz to 0.5Hz
-    val BAROMETER_DELAY = 2000000      // 0.5Hz (2 seconds) - every 2 seconds
+    // Barometer polling rate - KEPT at reasonable rate
+    val BAROMETER_DELAY = 1000000    // 1Hz (1 second) - every second
     
-    // GPS location update interval (in milliseconds) - INCREASED
-    val GPS_UPDATE_INTERVAL = 30000L      // 30 seconds (was 10 seconds)
-    val GPS_FASTEST_INTERVAL = 15000L     // 15 seconds (was 5 seconds)
+    // GPS location update interval (in milliseconds) - KEPT reasonable
+    val GPS_UPDATE_INTERVAL = 30000L      // 30 seconds
+    val GPS_FASTEST_INTERVAL = 15000L     // 15 seconds
     
     // Audio recording settings
     val AUDIO_SAMPLE_RATE = 44100         // Hz
     val AUDIO_CHANNEL_CONFIG = 1          // Mono
     val AUDIO_ENCODING = 2                // PCM_16BIT
     
-    // Photo capture interval (in milliseconds) - INCREASED
-    val PHOTO_INTERVAL = 60 * 60 * 1000L  // 60 minutes (was 30 minutes)
+    // Photo capture interval (in milliseconds) - KEPT reasonable
+    val PHOTO_INTERVAL = 60 * 60 * 1000L  // 60 minutes
     
-    // Data upload interval (in milliseconds) - TESTING: 2 minutes
-    val UPLOAD_INTERVAL = 2 * 60 * 1000L // 2 minutes (TESTING ONLY - reset to 60 minutes later)
+    // Data upload interval (in milliseconds) - REDUCED for testing
+    val UPLOAD_INTERVAL = 30 * 1000L // 30 seconds (TESTING - for immediate feedback)
     
-    // Data batching settings - SIMPLIFIED
-    val BATCH_SIZE = 50                   // Number of sensor readings to batch before processing
-    val BATCH_TIMEOUT = 300000L           // 5 minutes - flush batch even if not full (increased from 60 seconds)
+    // Data batching settings - ADJUSTED for continuous data
+    val BATCH_SIZE = 10                   // Reduced - process smaller batches
+    val BATCH_TIMEOUT = 10000L            // 10 seconds - flush batch more frequently
     val ENABLE_DATA_BATCHING = true       // Enable batching to reduce frequency
     
-    // Data filtering settings - NEW
-    val ENABLE_MOTION_FILTERING = true    // Only log when significant motion detected
-    val MOTION_THRESHOLD = 0.1f           // Minimum acceleration change to trigger logging
-    val ENABLE_DUPLICATE_FILTERING = true // Filter out duplicate readings
+    // Data filtering settings - RELAXED for continuous data
+    val ENABLE_MOTION_FILTERING = false   // DISABLED - log all readings for testing
+    val MOTION_THRESHOLD = 0.01f          // Much lower threshold (was 0.1f)
+    val ENABLE_DUPLICATE_FILTERING = false // DISABLED - log all readings for testing
     
     // Wake lock timeout (in milliseconds) - 0 = no timeout
     val WAKE_LOCK_TIMEOUT = 0L           // No timeout (keep alive indefinitely)

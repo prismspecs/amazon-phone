@@ -97,7 +97,7 @@ class DataRepository {
         // Only process if there's significant data to process
         val totalData = sensorDataQueue.size + locationDataQueue.size + barometerDataQueue.size
         
-        if (totalData < 20) { // Only process if we have at least 20 total readings
+        if (totalData < 5) { // Reduced from 20 to 5 - process smaller batches
             return
         }
         
@@ -139,7 +139,7 @@ class DataRepository {
     
     /**
      * Get unified sensor data that merges readings from different sensors
-     * This reduces null values by combining gyro, accel, location, and barometer data
+     * This creates continuous data by interpolating between sensor readings
      */
     suspend fun getUnifiedSensorData(): List<UnifiedSensorRecord> {
         return withContext(Dispatchers.IO) {
@@ -154,49 +154,50 @@ class DataRepository {
                 return@withContext emptyList()
             }
             
-            // Group data by time windows (5 seconds)
-            val timeWindow = 5000L
-            val sensorGroups = allSensorData.groupBy { it.timestamp / timeWindow }
-            val locationGroups = allLocationData.groupBy { it.timestamp / timeWindow }
-            val barometerGroups = allBarometerData.groupBy { it.timestamp / timeWindow }
+            // Sort all data by timestamp
+            val sortedSensorData = allSensorData.sortedBy { it.timestamp }
+            val sortedLocationData = allLocationData.sortedBy { it.timestamp }
+            val sortedBarometerData = allBarometerData.sortedBy { it.timestamp }
             
-            // Create unified records for each time window
-            val allTimeWindows = (sensorGroups.keys + locationGroups.keys + barometerGroups.keys).sorted()
+            // Get all unique timestamps from all sensor types
+            val allTimestamps = mutableSetOf<Long>()
+            allTimestamps.addAll(sortedSensorData.map { it.timestamp })
+            allTimestamps.addAll(sortedLocationData.map { it.timestamp })
+            allTimestamps.addAll(sortedBarometerData.map { it.timestamp })
             
-            allTimeWindows.forEach { timeWindowKey ->
-                val windowStart = timeWindowKey * timeWindow
+            val sortedTimestamps = allTimestamps.sorted()
+            
+            // Create unified records for each timestamp
+            sortedTimestamps.forEach { timestamp ->
+                // Find the closest sensor data (within 100ms window)
+                val sensorData = sortedSensorData.findLast { 
+                    it.timestamp <= timestamp && timestamp - it.timestamp <= 100 
+                }
                 
-                // Get the most recent data from each sensor type in this window
-                val sensorsInWindow = sensorGroups[timeWindowKey] ?: emptyList()
-                val locationsInWindow = locationGroups[timeWindowKey] ?: emptyList()
-                val barometersInWindow = barometerGroups[timeWindowKey] ?: emptyList()
+                // Find the closest location data (within 5 second window)
+                val locationData = sortedLocationData.findLast { 
+                    it.timestamp <= timestamp && timestamp - it.timestamp <= 5000 
+                }
                 
-                // Find the most recent reading from each sensor type
-                val latestSensor = sensorsInWindow.maxByOrNull { it.timestamp }
-                val latestLocation = locationsInWindow.maxByOrNull { it.timestamp }
-                val latestBarometer = barometersInWindow.maxByOrNull { it.timestamp }
-                
-                // Use the timestamp from the most recent reading
-                val recordTimestamp = listOfNotNull(
-                    latestSensor?.timestamp,
-                    latestLocation?.timestamp,
-                    latestBarometer?.timestamp
-                ).maxOrNull() ?: windowStart
+                // Find the closest barometer data (within 2 second window)
+                val barometerData = sortedBarometerData.findLast { 
+                    it.timestamp <= timestamp && timestamp - it.timestamp <= 2000 
+                }
                 
                 val unifiedRecord = UnifiedSensorRecord(
-                    timestamp = recordTimestamp,
-                    gyroX = latestSensor?.gyroX,
-                    gyroY = latestSensor?.gyroY,
-                    gyroZ = latestSensor?.gyroZ,
-                    accelX = latestSensor?.accelX,
-                    accelY = latestSensor?.accelY,
-                    accelZ = latestSensor?.accelZ,
-                    latitude = latestLocation?.latitude,
-                    longitude = latestLocation?.longitude,
-                    accuracy = latestLocation?.accuracy,
-                    pressure = latestBarometer?.pressure,
-                    altitude = latestBarometer?.altitude,
-                    deviceId = "android-${android.os.Build.SERIAL}" // Generate device ID
+                    timestamp = timestamp,
+                    gyroX = sensorData?.gyroX,
+                    gyroY = sensorData?.gyroY,
+                    gyroZ = sensorData?.gyroZ,
+                    accelX = sensorData?.accelX,
+                    accelY = sensorData?.accelY,
+                    accelZ = sensorData?.accelZ,
+                    latitude = locationData?.latitude,
+                    longitude = locationData?.longitude,
+                    accuracy = locationData?.accuracy,
+                    pressure = barometerData?.pressure,
+                    altitude = barometerData?.altitude,
+                    deviceId = "android-${android.os.Build.SERIAL}"
                 )
                 
                 unifiedRecords.add(unifiedRecord)
@@ -207,7 +208,7 @@ class DataRepository {
             locationDataQueue.clear()
             barometerDataQueue.clear()
             
-            unifiedRecords.sortedByDescending { it.timestamp }
+            unifiedRecords.sortedBy { it.timestamp }
         }
     }
 

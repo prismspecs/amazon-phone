@@ -159,6 +159,7 @@
                 <div class="data-value">Accel Z: <span id="accel-z">0.000</span></div>
                 <div class="data-value">Pressure: <span id="pressure">0.000</span> hPa</div>
                 <div class="data-value">Altitude: <span id="altitude">0.000</span> m</div>
+                <div class="data-value" style="color: #00ff88; font-weight: bold;">Height: <span id="height-change">0.000</span> m</div>
             </div>
 
             <div id="gps-data" class="data-panel">
@@ -179,6 +180,48 @@
                 <button id="pause-btn" disabled>⏸️ Pause</button>
                 <button id="reset-btn" disabled>🔄 Reset</button>
                 <button id="export-btn" disabled>💾 Export</button>
+                
+                <!-- Timeline component -->
+                <div id="timeline-container" style="margin-top: 15px; display: none;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span id="current-time" style="font-size: 11px; color: #00ff88;">00:00</span>
+                        <span id="total-time" style="font-size: 11px; color: #666;">00:00</span>
+                    </div>
+                    <div id="timeline-track" style="
+                        width: 100%; 
+                        height: 8px; 
+                        background: #333; 
+                        border-radius: 4px; 
+                        position: relative; 
+                        cursor: pointer;
+                        margin-bottom: 5px;
+                    ">
+                        <div id="timeline-progress" style="
+                            height: 100%; 
+                            background: #00ff88; 
+                            border-radius: 4px; 
+                            width: 0%; 
+                            transition: width 0.1s ease;
+                        "></div>
+                        <div id="timeline-handle" style="
+                            position: absolute; 
+                            top: -2px; 
+                            width: 12px; 
+                            height: 12px; 
+                            background: #00ff88; 
+                            border-radius: 50%; 
+                            left: 0%; 
+                            transform: translateX(-50%);
+                            cursor: pointer;
+                        "></div>
+                    </div>
+                    <div id="timestamp-display" style="
+                        font-size: 10px; 
+                        color: #999; 
+                        text-align: center;
+                        font-family: 'Courier New', monospace;
+                    ">No data loaded</div>
+                </div>
             </div>
         </div>
 

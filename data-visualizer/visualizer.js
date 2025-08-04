@@ -15,8 +15,22 @@ class PhoneDataVisualizer {
         this.currentData = null;
         this.targetData = null;
         this.interpolationProgress = 0;
-        this.interpolationDuration = 100; // ms between data points
-        this.lastTimestamp = 0;
+        
+        // Real-time playback using timestamps
+        this.playbackStartTime = 0;  // When playback started (performance.now())
+        this.dataStartTime = 0;      // Timestamp of first data point
+        this.dataEndTime = 0;        // Timestamp of last data point
+        this.playbackSpeed = 1.0;    // Speed multiplier (1.0 = real-time)
+        
+        // Smooth animation settings
+        this.targetFrameRate = 60;   // Target 60fps for smooth animation
+        this.frameInterval = 1000 / this.targetFrameRate; // ~16.67ms per frame
+        this.lastFrameTime = 0;
+        
+        // Height tracking
+        this.baseAltitude = 0;       // Starting altitude (will be set from first reading)
+        this.currentHeight = 0;      // Current height relative to starting position
+        this.heightScale = 10.0;     // Scale factor for height visualization (increased from 0.1 to 10.0)
         
         // Gyroscope bias correction
         this.gyroBias = { x: 0, y: 0, z: 0 };
@@ -29,6 +43,15 @@ class PhoneDataVisualizer {
         this.exportBtn = document.getElementById('export-btn');
         this.fileInput = document.getElementById('file-input');
         this.loading = document.getElementById('loading');
+        
+        // Timeline elements
+        this.timelineContainer = document.getElementById('timeline-container');
+        this.timelineTrack = document.getElementById('timeline-track');
+        this.timelineProgress = document.getElementById('timeline-progress');
+        this.timelineHandle = document.getElementById('timeline-handle');
+        this.currentTimeDisplay = document.getElementById('current-time');
+        this.totalTimeDisplay = document.getElementById('total-time');
+        this.timestampDisplay = document.getElementById('timestamp-display');
         
         this.init();
     }
@@ -75,6 +98,9 @@ class PhoneDataVisualizer {
 
         // Add coordinate axes for reference
         this.addCoordinateAxes();
+        
+        // Add ground plane and height indicator
+        this.addGroundPlane();
     }
 
     setupLighting() {
@@ -133,6 +159,30 @@ class PhoneDataVisualizer {
         this.scene.add(axesHelper);
     }
 
+    addGroundPlane() {
+        // Create a ground plane to show the starting height
+        const groundGeometry = new THREE.PlaneGeometry(10, 10);
+        const groundMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x333333, 
+            transparent: true, 
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+        this.groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
+        this.groundPlane.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+        this.groundPlane.position.y = 0; // At starting height
+        this.scene.add(this.groundPlane);
+        
+        // Add height indicator line
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0, 0, 0)
+        ]);
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x00ff88 });
+        this.heightLine = new THREE.Line(lineGeometry, lineMaterial);
+        this.scene.add(this.heightLine);
+    }
+
     setupMap() {
         // Initialize map with a default location (can be updated with real data)
         const mapOptions = {
@@ -172,16 +222,16 @@ class PhoneDataVisualizer {
     }
 
     setupEventListeners() {
-        // File input
         this.fileInput.addEventListener('change', (e) => this.handleFileLoad(e));
-
-        // Playback controls
         this.playBtn.addEventListener('click', () => this.play());
         this.pauseBtn.addEventListener('click', () => this.pause());
         this.resetBtn.addEventListener('click', () => this.reset());
         this.exportBtn.addEventListener('click', () => this.exportData());
-
-        // Window resize
+        
+        // Timeline event listeners
+        this.timelineTrack.addEventListener('click', (e) => this.seekToPosition(e));
+        this.timelineHandle.addEventListener('mousedown', (e) => this.startDragging(e));
+        
         window.addEventListener('resize', () => this.onWindowResize());
     }
 
@@ -203,31 +253,62 @@ class PhoneDataVisualizer {
     }
 
     loadSensorData(data) {
-        // Handle different data formats
-        if (data.data && Array.isArray(data.data)) {
-            this.sensorData = data.data;
-        } else if (Array.isArray(data)) {
-            this.sensorData = data;
-        } else {
-            console.error('Invalid data format');
-            return;
+        this.sensorData = data;
+        this.currentIndex = 0;
+        
+        if (this.sensorData.length > 0) {
+            // Sort data by timestamp to ensure chronological order (ascending)
+            this.sensorData.sort((a, b) => a.timestamp - b.timestamp);
+            
+            // Filter out any invalid timestamps
+            this.sensorData = this.sensorData.filter(record => 
+                record.timestamp && typeof record.timestamp === 'number' && record.timestamp > 0
+            );
+            
+            if (this.sensorData.length === 0) {
+                console.error('No valid timestamp data found');
+                return;
+            }
+            
+            // Calculate time range for playback
+            this.dataStartTime = this.sensorData[0].timestamp;
+            this.dataEndTime = this.sensorData[this.sensorData.length - 1].timestamp;
+            
+            // Set base altitude from first valid altitude reading
+            const firstAltitudeReading = this.sensorData.find(record => 
+                record.altitude !== null && record.altitude !== undefined
+            );
+            if (firstAltitudeReading) {
+                this.baseAltitude = firstAltitudeReading.altitude;
+                console.log(`Base altitude set to: ${this.baseAltitude} meters`);
+            }
+            
+            console.log(`Loaded ${this.sensorData.length} data points`);
+            console.log(`Time range: ${new Date(this.dataStartTime).toISOString()} to ${new Date(this.dataEndTime).toISOString()}`);
+            console.log(`Duration: ${(this.dataEndTime - this.dataStartTime) / 1000} seconds`);
+            
+            // Log some sample timestamps to debug
+            console.log('Sample timestamps:', this.sensorData.slice(0, 5).map(d => d.timestamp));
+            
+            this.calculateGyroBias();
+            this.updatePhoneModel(this.sensorData[0]);
+            this.updateUI(this.sensorData[0]);
+            
+            // Enable controls
+            this.playBtn.disabled = false;
+            this.resetBtn.disabled = false;
+            this.exportBtn.disabled = false;
+            
+            // Show and update timeline
+            this.timelineContainer.style.display = 'block';
+            this.updateTimeline();
+            
+            // Update map with GPS data
+            this.updateMapWithGPSData();
+            
+            // Start at beginning
+            this.reset();
         }
-
-        console.log(`Loaded ${this.sensorData.length} sensor records`);
-        
-        // Calculate gyroscope bias
-        this.calculateGyroBias();
-        
-        // Enable controls
-        this.playBtn.disabled = false;
-        this.resetBtn.disabled = false;
-        this.exportBtn.disabled = false;
-
-        // Update map with GPS data
-        this.updateMapWithGPSData();
-
-        // Start at beginning
-        this.reset();
     }
 
     calculateGyroBias() {
@@ -286,7 +367,7 @@ class PhoneDataVisualizer {
         this.isPlaying = true;
         this.playBtn.disabled = true;
         this.pauseBtn.disabled = false;
-        this.lastTimestamp = performance.now();
+        this.playbackStartTime = performance.now();
     }
 
     pause() {
@@ -301,7 +382,7 @@ class PhoneDataVisualizer {
         
         // Reset phone position and rotation
         if (this.phoneModel) {
-            this.phoneModel.position.set(0, 0, 0);
+            this.phoneModel.position.set(0, 0, 0); // Reset height to 0
             this.phoneModel.rotation.set(0, 0, 0);
         }
         
@@ -317,6 +398,7 @@ class PhoneDataVisualizer {
         
         this.updatePhoneModel(this.sensorData[0] || {});
         this.updateUI(this.sensorData[0] || {});
+        this.updateTimeline();
     }
 
     exportData() {
@@ -334,6 +416,29 @@ class PhoneDataVisualizer {
     updatePhoneModel(data) {
         if (!this.phoneModel || !data) return;
 
+        // Calculate height change from altitude
+        let heightChange = 0;
+        if (data.altitude !== null && data.altitude !== undefined) {
+            heightChange = (data.altitude - this.baseAltitude) * this.heightScale;
+            this.currentHeight = heightChange;
+            
+            // Debug logging for height changes
+            if (Math.abs(heightChange) > 0.1) {
+                console.log(`Height change: ${(data.altitude - this.baseAltitude).toFixed(3)}m -> ${heightChange.toFixed(2)} units`);
+            }
+        }
+        
+        // Position phone based on height (Y-axis is up/down in Three.js)
+        this.phoneModel.position.y = heightChange;
+        
+        // Update height indicator line
+        if (this.heightLine) {
+            const points = this.heightLine.geometry.attributes.position;
+            points.setY(0, 0); // Start at ground
+            points.setY(1, heightChange); // End at phone height
+            points.needsUpdate = true;
+        }
+        
         // Simple approach: Use accelerometer for orientation, gyroscope for movement indication
         
         // Use accelerometer to determine phone orientation (gravity direction)
@@ -394,6 +499,11 @@ class PhoneDataVisualizer {
         document.getElementById('accel-z').textContent = (data.accel_z || 0).toFixed(3);
         document.getElementById('pressure').textContent = (data.pressure || 0).toFixed(1);
         document.getElementById('altitude').textContent = (data.altitude || 0).toFixed(1);
+        
+        // Update height display
+        const heightChange = data.altitude ? (data.altitude - this.baseAltitude) : 0;
+        document.getElementById('altitude').textContent = `${(data.altitude || 0).toFixed(1)} m (${heightChange.toFixed(2)} m change)`;
+        document.getElementById('height-change').textContent = heightChange.toFixed(3);
 
         // Update GPS values
         document.getElementById('latitude').textContent = (data.latitude || 0).toFixed(6);
@@ -412,28 +522,79 @@ class PhoneDataVisualizer {
 
         if (this.isPlaying && this.sensorData.length > 0) {
             const currentTime = performance.now();
-            const deltaTime = currentTime - this.lastTimestamp;
             
-            // Advance through data based on time
-            if (deltaTime > this.interpolationDuration) {
-                this.currentIndex = (this.currentIndex + 1) % this.sensorData.length;
-                this.lastTimestamp = currentTime;
-                
-                // Set up interpolation
-                this.currentData = this.targetData || this.sensorData[this.currentIndex];
-                this.targetData = this.sensorData[this.currentIndex];
-                this.interpolationProgress = 0;
+            // Limit frame rate for smooth animation
+            if (currentTime - this.lastFrameTime < this.frameInterval) {
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+                return;
             }
             
-            // Interpolate between data points
-            if (this.currentData && this.targetData) {
-                this.interpolationProgress += deltaTime / this.interpolationDuration;
-                this.interpolationProgress = Math.min(this.interpolationProgress, 1);
+            this.lastFrameTime = currentTime;
+            
+            const elapsedPlaybackTime = (currentTime - this.playbackStartTime) * this.playbackSpeed;
+            const targetDataTime = this.dataStartTime + elapsedPlaybackTime;
+            
+            // Find the two data points to interpolate between
+            let startIndex = 0;
+            let endIndex = 0;
+            let interpolationProgress = 0;
+            
+            // Find the data points that bracket our target time
+            for (let i = 0; i < this.sensorData.length - 1; i++) {
+                const currentTimestamp = this.sensorData[i].timestamp;
+                const nextTimestamp = this.sensorData[i + 1].timestamp;
                 
-                const interpolatedData = this.interpolateData(this.currentData, this.targetData, this.interpolationProgress);
+                if (targetDataTime >= currentTimestamp && targetDataTime <= nextTimestamp) {
+                    startIndex = i;
+                    endIndex = i + 1;
+                    const timeDiff = nextTimestamp - currentTimestamp;
+                    if (timeDiff > 0) {
+                        interpolationProgress = (targetDataTime - currentTimestamp) / timeDiff;
+                    }
+                    break;
+                } else if (targetDataTime < currentTimestamp) {
+                    // Before first data point
+                    startIndex = 0;
+                    endIndex = 0;
+                    break;
+                } else if (i === this.sensorData.length - 2 && targetDataTime > nextTimestamp) {
+                    // After last data point
+                    startIndex = this.sensorData.length - 1;
+                    endIndex = this.sensorData.length - 1;
+                    break;
+                }
+            }
+            
+            // If we've reached the end, loop back to start
+            if (targetDataTime > this.dataEndTime) {
+                this.playbackStartTime = currentTime;
+                startIndex = 0;
+                endIndex = 0;
+                interpolationProgress = 0;
+            }
+            
+            // Update current index for timeline
+            this.currentIndex = startIndex;
+            
+            // Interpolate between data points
+            if (startIndex === endIndex) {
+                // Single data point
+                this.updatePhoneModel(this.sensorData[startIndex]);
+                this.updateUI(this.sensorData[startIndex]);
+            } else {
+                // Interpolate between two data points
+                const interpolatedData = this.interpolateData(
+                    this.sensorData[startIndex],
+                    this.sensorData[endIndex],
+                    interpolationProgress
+                );
                 this.updatePhoneModel(interpolatedData);
                 this.updateUI(interpolatedData);
             }
+            
+            // Update timeline during playback
+            this.updateTimeline();
         }
 
         this.controls.update();
@@ -443,12 +604,26 @@ class PhoneDataVisualizer {
     interpolateData(startData, endData, progress) {
         const interpolated = {};
         
-        // Interpolate all numeric values
+        // Interpolate all numeric values, handling null values
         Object.keys(startData).forEach(key => {
-            if (typeof startData[key] === 'number' && typeof endData[key] === 'number') {
+            if (key === 'timestamp' || key === 'device_id' || key === 'type') {
+                // Don't interpolate non-numeric fields
+                interpolated[key] = endData[key];
+            } else if (typeof startData[key] === 'number' && typeof endData[key] === 'number') {
+                // Both values are numbers - interpolate
                 interpolated[key] = startData[key] + (endData[key] - startData[key]) * progress;
+            } else if (startData[key] === null && endData[key] !== null) {
+                // Start is null, end is not - use end value
+                interpolated[key] = endData[key];
+            } else if (startData[key] !== null && endData[key] === null) {
+                // Start is not null, end is null - use start value
+                interpolated[key] = startData[key];
+            } else if (startData[key] === null && endData[key] === null) {
+                // Both are null - keep null
+                interpolated[key] = null;
             } else {
-                interpolated[key] = endData[key]; // Use target value for non-numeric
+                // Fallback - use target value
+                interpolated[key] = endData[key];
             }
         });
         
@@ -463,6 +638,96 @@ class PhoneDataVisualizer {
 
     hideLoading() {
         this.loading.style.display = 'none';
+    }
+
+    seekToPosition(event) {
+        if (this.sensorData.length === 0) return;
+        
+        const rect = this.timelineTrack.getBoundingClientRect();
+        const clickX = event.clientX - rect.left;
+        const percentage = Math.max(0, Math.min(1, clickX / rect.width));
+        
+        this.seekToPercentage(percentage);
+    }
+
+    startDragging(event) {
+        if (this.sensorData.length === 0) return;
+        
+        event.preventDefault();
+        const handle = this.timelineHandle;
+        const track = this.timelineTrack;
+        
+        const startX = event.clientX;
+        const startLeft = parseFloat(handle.style.left) || 0;
+        
+        const onMouseMove = (e) => {
+            const deltaX = e.clientX - startX;
+            const rect = track.getBoundingClientRect();
+            const newLeft = Math.max(0, Math.min(100, startLeft + (deltaX / rect.width) * 100));
+            
+            handle.style.left = newLeft + '%';
+            this.timelineProgress.style.width = newLeft + '%';
+            
+            this.seekToPercentage(newLeft / 100);
+        };
+        
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+        
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    }
+
+    seekToPercentage(percentage) {
+        if (this.sensorData.length === 0) return;
+        
+        const totalDuration = this.dataEndTime - this.dataStartTime;
+        const targetTime = this.dataStartTime + (totalDuration * percentage);
+        
+        // Find the closest data point
+        let targetIndex = 0;
+        for (let i = 0; i < this.sensorData.length; i++) {
+            if (this.sensorData[i].timestamp >= targetTime) {
+                targetIndex = i;
+                break;
+            }
+        }
+        
+        this.currentIndex = targetIndex;
+        this.updatePhoneModel(this.sensorData[this.currentIndex]);
+        this.updateUI(this.sensorData[this.currentIndex]);
+        this.updateTimeline();
+    }
+
+    updateTimeline() {
+        if (this.sensorData.length === 0) return;
+        
+        const totalDuration = this.dataEndTime - this.dataStartTime;
+        const currentTime = this.sensorData[this.currentIndex].timestamp - this.dataStartTime;
+        const percentage = totalDuration > 0 ? (currentTime / totalDuration) : 0;
+        
+        // Update progress bar and handle
+        this.timelineProgress.style.width = (percentage * 100) + '%';
+        this.timelineHandle.style.left = (percentage * 100) + '%';
+        
+        // Update time displays
+        const currentSeconds = Math.floor(currentTime / 1000);
+        const totalSeconds = Math.floor(totalDuration / 1000);
+        this.currentTimeDisplay.textContent = this.formatTime(currentSeconds);
+        this.totalTimeDisplay.textContent = this.formatTime(totalSeconds);
+        
+        // Update timestamp display
+        const currentData = this.sensorData[this.currentIndex];
+        const timestamp = new Date(currentData.timestamp);
+        this.timestampDisplay.textContent = timestamp.toISOString();
+    }
+
+    formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 }
 
