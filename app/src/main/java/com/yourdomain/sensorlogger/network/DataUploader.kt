@@ -39,71 +39,51 @@ class DataUploader(private val context: Context, private val dataRepository: Dat
 
     private suspend fun uploadAll() {
         try {
-            // Gather all unsent data
-            val sensors = dataRepository.getUnsentSensorData()
-            val locations = dataRepository.getUnsentLocationData()
-            val barometers = dataRepository.getUnsentBarometerData()
+            // Gather unified sensor data (reduces null values)
+            val unifiedData = dataRepository.getUnifiedSensorData()
             val audios = dataRepository.getUnsentAudioData()
             val photos = dataRepository.getUnsentPhotoData()
 
             // Skip upload if no data
-            if (sensors.isEmpty() && locations.isEmpty() && barometers.isEmpty() && 
-                audios.isEmpty() && photos.isEmpty()) {
+            if (unifiedData.isEmpty() && audios.isEmpty() && photos.isEmpty()) {
                 Log.d(TAG, "No data to upload")
                 return
             }
 
-            // Create JSON payload
+            // Create JSON payload with unified data format
             val payload = JSONObject().apply {
                 put("deviceId", deviceId)
+                put("count", unifiedData.size)
                 
-                if (sensors.isNotEmpty()) {
-                    val sensorsArray = JSONArray()
-                    sensors.forEach { sensor ->
-                        val sensorObj = JSONObject().apply {
-                            put("timestamp", sensor.timestamp)
-                            sensor.gyroX?.let { put("gyroX", it) }
-                            sensor.gyroY?.let { put("gyroY", it) }
-                            sensor.gyroZ?.let { put("gyroZ", it) }
-                            sensor.accelX?.let { put("accelX", it) }
-                            sensor.accelY?.let { put("accelY", it) }
-                            sensor.accelZ?.let { put("accelZ", it) }
+                if (unifiedData.isNotEmpty()) {
+                    val dataArray = JSONArray()
+                    unifiedData.forEach { record ->
+                        val dataObj = JSONObject().apply {
+                            put("type", record.type)
+                            put("timestamp", record.timestamp)
+                            put("gyro_x", record.gyroX)
+                            put("gyro_y", record.gyroY)
+                            put("gyro_z", record.gyroZ)
+                            put("accel_x", record.accelX)
+                            put("accel_y", record.accelY)
+                            put("accel_z", record.accelZ)
+                            put("latitude", record.latitude)
+                            put("longitude", record.longitude)
+                            put("accuracy", record.accuracy)
+                            put("pressure", record.pressure)
+                            put("altitude", record.altitude)
+                            put("device_id", record.deviceId)
+                            put("created_at", java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+                                .format(java.util.Date(record.timestamp)))
                         }
-                        sensorsArray.put(sensorObj)
+                        dataArray.put(dataObj)
                     }
-                    put("sensors", sensorsArray)
-                }
-                
-                if (locations.isNotEmpty()) {
-                    val locationsArray = JSONArray()
-                    locations.forEach { location ->
-                        val locationObj = JSONObject().apply {
-                            put("timestamp", location.timestamp)
-                            put("latitude", location.latitude)
-                            put("longitude", location.longitude)
-                            put("accuracy", location.accuracy)
-                        }
-                        locationsArray.put(locationObj)
-                    }
-                    put("locations", locationsArray)
-                }
-                
-                if (barometers.isNotEmpty()) {
-                    val barometersArray = JSONArray()
-                    barometers.forEach { barometer ->
-                        val barometerObj = JSONObject().apply {
-                            put("timestamp", barometer.timestamp)
-                            put("pressure", barometer.pressure)
-                            put("altitude", barometer.altitude)
-                        }
-                        barometersArray.put(barometerObj)
-                    }
-                    put("barometers", barometersArray)
+                    put("data", dataArray)
                 }
             }
 
             // Log what would be sent
-            val dataSummary = "${sensors.size} sensors, ${locations.size} locations, ${barometers.size} barometers"
+            val dataSummary = "${unifiedData.size} unified records"
             Log.d(TAG, "🔄 Starting upload to amazon.government.rip: $dataSummary")
             showToast("📤 Starting upload: $dataSummary")
 

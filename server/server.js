@@ -23,11 +23,36 @@ const upload = multer({
 
 // Database setup - use persistent storage path
 const dbPath = process.env.DB_PATH || '/app/data/sensor_data.db';
-const db = new sqlite3.Database(dbPath);
+
+// Add error handling for database path
+console.log('Database path:', dbPath);
+console.log('Upload directory:', uploadDir);
+
+// Check if data directory exists
+const dataDir = path.dirname(dbPath);
+if (!fs.existsSync(dataDir)) {
+    console.log('Creating data directory:', dataDir);
+    fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// Check if upload directory exists
+if (!fs.existsSync(uploadDir)) {
+    console.log('Creating upload directory:', uploadDir);
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+        console.error('Database connection error:', err);
+        process.exit(1);
+    } else {
+        console.log('Database connected successfully');
+    }
+});
 
 // Create tables if they don't exist
 db.serialize(() => {
-    // Sensor data table
+    // Unified sensor data table (includes all sensor types)
     db.run(`CREATE TABLE IF NOT EXISTS sensor_data (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp INTEGER,
@@ -37,50 +62,111 @@ db.serialize(() => {
         accel_x REAL,
         accel_y REAL,
         accel_z REAL,
-        device_id TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-
-    // Location data table
-    db.run(`CREATE TABLE IF NOT EXISTS location_data (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp INTEGER,
         latitude REAL,
         longitude REAL,
         accuracy REAL,
-        device_id TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-
-    // Barometer data table
-    db.run(`CREATE TABLE IF NOT EXISTS barometer_data (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp INTEGER,
         pressure REAL,
         altitude REAL,
         device_id TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-
-    // Audio files table
-    db.run(`CREATE TABLE IF NOT EXISTS audio_files (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp INTEGER,
-        file_path TEXT,
-        duration INTEGER,
-        device_id TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
-
-    // Photo files table
-    db.run(`CREATE TABLE IF NOT EXISTS photo_files (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp INTEGER,
-        file_path TEXT,
-        device_id TEXT,
+        type TEXT DEFAULT 'unified',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 });
+
+// Migration: Add new columns to existing sensor_data table if they don't exist
+// This runs after table creation to ensure the table exists
+setTimeout(() => {
+    console.log('Running database migration...');
+    db.all(`PRAGMA table_info(sensor_data)`, (err, rows) => {
+        if (err) {
+            console.error('Migration error checking table info:', err);
+            return;
+        }
+        
+        if (rows) {
+            const existingColumns = rows.map(row => row.name);
+            console.log('Existing columns:', existingColumns);
+            
+            // Add missing columns
+            if (!existingColumns.includes('latitude')) {
+                db.run(`ALTER TABLE sensor_data ADD COLUMN latitude REAL`, (err) => {
+                    if (err) console.error('Error adding latitude column:', err);
+                    else console.log('Added latitude column to sensor_data table');
+                });
+            }
+            if (!existingColumns.includes('longitude')) {
+                db.run(`ALTER TABLE sensor_data ADD COLUMN longitude REAL`, (err) => {
+                    if (err) console.error('Error adding longitude column:', err);
+                    else console.log('Added longitude column to sensor_data table');
+                });
+            }
+            if (!existingColumns.includes('accuracy')) {
+                db.run(`ALTER TABLE sensor_data ADD COLUMN accuracy REAL`, (err) => {
+                    if (err) console.error('Error adding accuracy column:', err);
+                    else console.log('Added accuracy column to sensor_data table');
+                });
+            }
+            if (!existingColumns.includes('pressure')) {
+                db.run(`ALTER TABLE sensor_data ADD COLUMN pressure REAL`, (err) => {
+                    if (err) console.error('Error adding pressure column:', err);
+                    else console.log('Added pressure column to sensor_data table');
+                });
+            }
+            if (!existingColumns.includes('altitude')) {
+                db.run(`ALTER TABLE sensor_data ADD COLUMN altitude REAL`, (err) => {
+                    if (err) console.error('Error adding altitude column:', err);
+                    else console.log('Added altitude column to sensor_data table');
+                });
+            }
+            if (!existingColumns.includes('type')) {
+                db.run(`ALTER TABLE sensor_data ADD COLUMN type TEXT DEFAULT 'unified'`, (err) => {
+                    if (err) console.error('Error adding type column:', err);
+                    else console.log('Added type column to sensor_data table');
+                });
+            }
+        }
+    });
+}, 1000); // Wait 1 second for table creation to complete
+
+// Location data table
+db.run(`CREATE TABLE IF NOT EXISTS location_data (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp INTEGER,
+    latitude REAL,
+    longitude REAL,
+    accuracy REAL,
+    device_id TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+// Barometer data table
+db.run(`CREATE TABLE IF NOT EXISTS barometer_data (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp INTEGER,
+    pressure REAL,
+    altitude REAL,
+    device_id TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+// Audio files table
+db.run(`CREATE TABLE IF NOT EXISTS audio_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp INTEGER,
+    file_path TEXT,
+    duration INTEGER,
+    device_id TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+// Photo files table
+db.run(`CREATE TABLE IF NOT EXISTS photo_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp INTEGER,
+    file_path TEXT,
+    device_id TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -94,67 +180,38 @@ app.get('/health', (req, res) => {
 // Main data upload endpoint
 app.post('/upload', (req, res) => {
     try {
-        const { sensors, locations, barometers, audios, photos, deviceId } = req.body;
+        const { data, count, deviceId, audios, photos } = req.body;
         
-        console.log(`Received data from device ${deviceId}:`, {
-            sensors: sensors?.length || 0,
-            locations: locations?.length || 0,
-            barometers: barometers?.length || 0,
+        console.log(`Received unified data from device ${deviceId}:`, {
+            count: count || 0,
+            data: data?.length || 0,
             audios: audios?.length || 0,
             photos: photos?.length || 0
         });
 
-        // Insert sensor data
-        if (sensors && sensors.length > 0) {
+        // Insert unified sensor data
+        if (data && data.length > 0) {
             const stmt = db.prepare(`INSERT INTO sensor_data 
-                (timestamp, gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z, device_id) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+                (timestamp, gyro_x, gyro_y, gyro_z, accel_x, accel_y, accel_z, 
+                 latitude, longitude, accuracy, pressure, altitude, device_id, type) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
             
-            sensors.forEach(sensor => {
+            data.forEach(record => {
                 stmt.run([
-                    sensor.timestamp,
-                    sensor.gyroX,
-                    sensor.gyroY,
-                    sensor.gyroZ,
-                    sensor.accelX,
-                    sensor.accelY,
-                    sensor.accelZ,
-                    deviceId
-                ]);
-            });
-            stmt.finalize();
-        }
-
-        // Insert location data
-        if (locations && locations.length > 0) {
-            const stmt = db.prepare(`INSERT INTO location_data 
-                (timestamp, latitude, longitude, accuracy, device_id) 
-                VALUES (?, ?, ?, ?, ?)`);
-            
-            locations.forEach(location => {
-                stmt.run([
-                    location.timestamp,
-                    location.latitude,
-                    location.longitude,
-                    location.accuracy,
-                    deviceId
-                ]);
-            });
-            stmt.finalize();
-        }
-
-        // Insert barometer data
-        if (barometers && barometers.length > 0) {
-            const stmt = db.prepare(`INSERT INTO barometer_data 
-                (timestamp, pressure, altitude, device_id) 
-                VALUES (?, ?, ?, ?)`);
-            
-            barometers.forEach(barometer => {
-                stmt.run([
-                    barometer.timestamp,
-                    barometer.pressure,
-                    barometer.altitude,
-                    deviceId
+                    record.timestamp,
+                    record.gyro_x,
+                    record.gyro_y,
+                    record.gyro_z,
+                    record.accel_x,
+                    record.accel_y,
+                    record.accel_z,
+                    record.latitude,
+                    record.longitude,
+                    record.accuracy,
+                    record.pressure,
+                    record.altitude,
+                    record.device_id,
+                    record.type
                 ]);
             });
             stmt.finalize();
@@ -162,11 +219,10 @@ app.post('/upload', (req, res) => {
 
         res.json({ 
             success: true, 
-            message: 'Data uploaded successfully',
+            message: 'Unified data uploaded successfully',
             received: {
-                sensors: sensors?.length || 0,
-                locations: locations?.length || 0,
-                barometers: barometers?.length || 0,
+                count: count || 0,
+                data: data?.length || 0,
                 audios: audios?.length || 0,
                 photos: photos?.length || 0
             }
@@ -500,11 +556,294 @@ app.get('/download/all', (req, res) => {
     });
 });
 
+// ===== DELETE ENDPOINTS =====
+
+// Delete all sensor data
+app.delete('/data/sensors', (req, res) => {
+    const deviceId = req.query.device;
+    const beforeDate = req.query.before; // ISO date string
+    const afterDate = req.query.after;   // ISO date string
+    
+    let query = 'DELETE FROM sensor_data';
+    let params = [];
+    let conditions = [];
+    
+    if (deviceId) {
+        conditions.push('device_id = ?');
+        params.push(deviceId);
+    }
+    
+    if (beforeDate) {
+        conditions.push('created_at < ?');
+        params.push(beforeDate);
+    }
+    
+    if (afterDate) {
+        conditions.push('created_at > ?');
+        params.push(afterDate);
+    }
+    
+    if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
+    }
+    
+    db.run(query, params, function(err) {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else {
+            res.json({ 
+                success: true, 
+                message: `Deleted ${this.changes} sensor records`,
+                deletedCount: this.changes
+            });
+        }
+    });
+});
+
+// Delete all location data
+app.delete('/data/locations', (req, res) => {
+    const deviceId = req.query.device;
+    const beforeDate = req.query.before;
+    const afterDate = req.query.after;
+    
+    let query = 'DELETE FROM location_data';
+    let params = [];
+    let conditions = [];
+    
+    if (deviceId) {
+        conditions.push('device_id = ?');
+        params.push(deviceId);
+    }
+    
+    if (beforeDate) {
+        conditions.push('created_at < ?');
+        params.push(beforeDate);
+    }
+    
+    if (afterDate) {
+        conditions.push('created_at > ?');
+        params.push(afterDate);
+    }
+    
+    if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
+    }
+    
+    db.run(query, params, function(err) {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else {
+            res.json({ 
+                success: true, 
+                message: `Deleted ${this.changes} location records`,
+                deletedCount: this.changes
+            });
+        }
+    });
+});
+
+// Delete all barometer data
+app.delete('/data/barometers', (req, res) => {
+    const deviceId = req.query.device;
+    const beforeDate = req.query.before;
+    const afterDate = req.query.after;
+    
+    let query = 'DELETE FROM barometer_data';
+    let params = [];
+    let conditions = [];
+    
+    if (deviceId) {
+        conditions.push('device_id = ?');
+        params.push(deviceId);
+    }
+    
+    if (beforeDate) {
+        conditions.push('created_at < ?');
+        params.push(beforeDate);
+    }
+    
+    if (afterDate) {
+        conditions.push('created_at > ?');
+        params.push(afterDate);
+    }
+    
+    if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
+    }
+    
+    db.run(query, params, function(err) {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else {
+            res.json({ 
+                success: true, 
+                message: `Deleted ${this.changes} barometer records`,
+                deletedCount: this.changes
+            });
+        }
+    });
+});
+
+// Delete all data for a specific device
+app.delete('/data/device/:deviceId', (req, res) => {
+    const deviceId = req.params.deviceId;
+    const beforeDate = req.query.before;
+    const afterDate = req.query.after;
+    
+    let conditions = [];
+    let params = [deviceId];
+    
+    if (beforeDate) {
+        conditions.push('created_at < ?');
+        params.push(beforeDate);
+    }
+    
+    if (afterDate) {
+        conditions.push('created_at > ?');
+        params.push(afterDate);
+    }
+    
+    const whereClause = conditions.length > 0 ? ' AND ' + conditions.join(' AND ') : '';
+    
+    // Delete from all tables
+    const queries = [
+        `DELETE FROM sensor_data WHERE device_id = ?${whereClause}`,
+        `DELETE FROM location_data WHERE device_id = ?${whereClause}`,
+        `DELETE FROM barometer_data WHERE device_id = ?${whereClause}`,
+        `DELETE FROM audio_files WHERE device_id = ?${whereClause}`,
+        `DELETE FROM photo_files WHERE device_id = ?${whereClause}`
+    ];
+    
+    let totalDeleted = 0;
+    let completedQueries = 0;
+    const totalQueries = queries.length;
+    
+    queries.forEach((query, index) => {
+        db.run(query, params, function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            
+            totalDeleted += this.changes;
+            completedQueries++;
+            
+            if (completedQueries === totalQueries) {
+                res.json({ 
+                    success: true, 
+                    message: `Deleted ${totalDeleted} total records for device ${deviceId}`,
+                    deletedCount: totalDeleted
+                });
+            }
+        });
+    });
+});
+
+// Delete all data (NUCLEAR OPTION - use with caution!)
+app.delete('/data/all', (req, res) => {
+    const confirm = req.query.confirm;
+    
+    if (confirm !== 'true') {
+        return res.status(400).json({ 
+            error: 'This will delete ALL data. Add ?confirm=true to proceed.',
+            warning: 'This is irreversible!'
+        });
+    }
+    
+    const queries = [
+        'DELETE FROM sensor_data',
+        'DELETE FROM location_data', 
+        'DELETE FROM barometer_data',
+        'DELETE FROM audio_files',
+        'DELETE FROM photo_files'
+    ];
+    
+    let totalDeleted = 0;
+    let completedQueries = 0;
+    const totalQueries = queries.length;
+    
+    queries.forEach((query, index) => {
+        db.run(query, [], function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            
+            totalDeleted += this.changes;
+            completedQueries++;
+            
+            if (completedQueries === totalQueries) {
+                res.json({ 
+                    success: true, 
+                    message: `Deleted ${totalDeleted} total records from all tables`,
+                    deletedCount: totalDeleted,
+                    warning: 'All data has been permanently deleted!'
+                });
+            }
+        });
+    });
+});
+
+// Delete data older than X days
+app.delete('/data/older-than/:days', (req, res) => {
+    const days = parseInt(req.params.days);
+    const deviceId = req.query.device;
+    
+    if (isNaN(days) || days < 1) {
+        return res.status(400).json({ error: 'Days must be a positive number' });
+    }
+    
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    const cutoffISO = cutoffDate.toISOString();
+    
+    let conditions = ['created_at < ?'];
+    let params = [cutoffISO];
+    
+    if (deviceId) {
+        conditions.push('device_id = ?');
+        params.push(deviceId);
+    }
+    
+    const whereClause = conditions.join(' AND ');
+    
+    const queries = [
+        `DELETE FROM sensor_data WHERE ${whereClause}`,
+        `DELETE FROM location_data WHERE ${whereClause}`,
+        `DELETE FROM barometer_data WHERE ${whereClause}`,
+        `DELETE FROM audio_files WHERE ${whereClause}`,
+        `DELETE FROM photo_files WHERE ${whereClause}`
+    ];
+    
+    let totalDeleted = 0;
+    let completedQueries = 0;
+    const totalQueries = queries.length;
+    
+    queries.forEach((query, index) => {
+        db.run(query, params, function(err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            
+            totalDeleted += this.changes;
+            completedQueries++;
+            
+            if (completedQueries === totalQueries) {
+                res.json({ 
+                    success: true, 
+                    message: `Deleted ${totalDeleted} records older than ${days} days`,
+                    deletedCount: totalDeleted,
+                    cutoffDate: cutoffISO
+                });
+            }
+        });
+    });
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Sensor data server running on port ${PORT}`);
     console.log(`Health check: http://localhost:${PORT}/health`);
     console.log(`Upload endpoint: http://localhost:${PORT}/upload`);
+    console.log(`Delete endpoints available at /data/sensors, /data/locations, /data/barometers, /data/device/:id, /data/all, /data/older-than/:days`);
 });
 
 // Graceful shutdown

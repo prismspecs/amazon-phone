@@ -56,9 +56,9 @@ object SensorConfig {
     // Data upload interval (in milliseconds) - TESTING: 2 minutes
     val UPLOAD_INTERVAL = 2 * 60 * 1000L // 2 minutes (TESTING ONLY - reset to 60 minutes later)
     
-    // Data batching settings - NEW
+    // Data batching settings - SIMPLIFIED
     val BATCH_SIZE = 50                   // Number of sensor readings to batch before processing
-    val BATCH_TIMEOUT = 30000L            // 30 seconds - flush batch even if not full
+    val BATCH_TIMEOUT = 300000L           // 5 minutes - flush batch even if not full (increased from 60 seconds)
     val ENABLE_DATA_BATCHING = true       // Enable batching to reduce frequency
     
     // Data filtering settings - NEW

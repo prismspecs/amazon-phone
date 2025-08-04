@@ -28,7 +28,30 @@ The application follows a modular, single-responsibility architecture:
 
 Refer to `plan.md` for a detailed breakdown of the architecture and data models.
 
-## Setup & Usage
+## 📊 Data Visualization
+
+### Quick Data Download & 3D Visualization
+
+Download your phone's sensor data and visualize it in 3D:
+
+```bash
+# Download latest sensor data
+./quick_download.sh
+
+# Start the 3D visualizer
+cd data-visualizer && npm start
+
+# Open http://localhost:3000 and load visualizer_data.json
+```
+
+**Features:**
+- **3D phone model** that responds to gyroscope/accelerometer data
+- **GPS mini-map** with location tracking
+- **Real-time sensor values** display
+- **Dark theme** optimized for projection
+- **Automatic device detection** (no configuration needed)
+
+## 🚀 Quick Start
 
 1. **Permissions**: The app will request the following permissions on first launch:
 
