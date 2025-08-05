@@ -17,6 +17,11 @@ class GpsController(
     private val TAG = "GpsController"
     private val fusedLocationClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context)
     private lateinit var locationCallback: LocationCallback
+    
+    // Store current GPS data for unified records
+    private var currentLatitude: Double? = null
+    private var currentLongitude: Double? = null
+    private var currentAccuracy: Float? = null
 
     @SuppressLint("MissingPermission")
     fun start() {
@@ -28,17 +33,14 @@ class GpsController(
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 for (location in locationResult.locations) {
-                    val locationData = LocationData(
-                        System.currentTimeMillis(),
-                        location.latitude,
-                        location.longitude,
-                        location.accuracy
-                    )
-                    dataRepository.addLocationData(locationData) // Assuming this method exists
-                    Log.d(TAG, "Location recorded: $locationData")
+                    currentLatitude = location.latitude
+                    currentLongitude = location.longitude
+                    currentAccuracy = location.accuracy
                     
                     // Send to UI
-                    SensorDataManager.updateGpsData(location.latitude, location.longitude, location.accuracy)
+                    SensorDataManager.updateGpsData(currentLatitude!!, currentLongitude!!, currentAccuracy!!)
+                    
+                    Log.d(TAG, "GPS data updated: lat=${currentLatitude}, lon=${currentLongitude}, accuracy=${currentAccuracy}")
                 }
             }
         }
@@ -56,6 +58,11 @@ class GpsController(
         )
         Log.d(TAG, "GPS location updates started")
     }
+    
+    // Get current GPS data for unified records
+    fun getCurrentLatitude(): Double? = currentLatitude
+    fun getCurrentLongitude(): Double? = currentLongitude
+    fun getCurrentAccuracy(): Float? = currentAccuracy
 
     fun stop() {
         fusedLocationClient.removeLocationUpdates(locationCallback)

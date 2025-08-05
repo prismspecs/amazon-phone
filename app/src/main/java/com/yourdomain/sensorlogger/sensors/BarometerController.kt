@@ -29,6 +29,20 @@ class BarometerController(context: Context, private val dataRepository: DataRepo
             pressureSensor?.also { sensor ->
                 sensorManager.registerListener(this, sensor, SensorConfig.BAROMETER_DELAY)
                 Log.d(TAG, "Barometer listener registered with configurable rate")
+                
+                // Immediately request a reading to get initial data
+                // This ensures we have barometer data in the first packet
+                sensorManager.registerListener(object : SensorEventListener {
+                    override fun onSensorChanged(event: SensorEvent?) {
+                        if (event?.sensor?.type == Sensor.TYPE_PRESSURE) {
+                            currentPressure = event.values[0]
+                            currentAltitude = SensorManager.getAltitude(SensorManager.PRESSURE_STANDARD_ATMOSPHERE, currentPressure!!)
+                            Log.d(TAG, "Initial barometer reading: pressure=${currentPressure}, altitude=${currentAltitude}")
+                            sensorManager.unregisterListener(this)
+                        }
+                    }
+                    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+                }, sensor, SensorManager.SENSOR_DELAY_NORMAL)
             }
         }
     }

@@ -22,6 +22,7 @@ class SensorController(context: Context, private val dataRepository: DataReposit
     
     // Reference to barometer controller for unified data
     private var barometerController: BarometerController? = null
+    private var gpsController: GpsController? = null
     
     // Unified data collection
     private var currentGyroX: Float? = null
@@ -44,6 +45,11 @@ class SensorController(context: Context, private val dataRepository: DataReposit
     fun setBarometerController(controller: BarometerController) {
         barometerController = controller
     }
+    
+    // Set GPS controller reference
+    fun setGpsController(controller: GpsController) {
+        gpsController = controller
+    }
 
     fun start() {
         if (SensorConfig.ENABLE_GYROSCOPE) {
@@ -59,12 +65,18 @@ class SensorController(context: Context, private val dataRepository: DataReposit
             }
         }
         
+        // Immediately send first packet with whatever data we have
+        // This ensures we don't wait for the slowest sensor
+        packetExecutor.execute {
+            sendUnifiedPacket()
+        }
+        
         // Start sending unified packets every second
         packetExecutor.scheduleAtFixedRate({
             sendUnifiedPacket()
         }, 1000, 1000, TimeUnit.MILLISECONDS)
         
-        Log.d(TAG, "Sensor controller started with unified packet collection")
+        Log.d(TAG, "Sensor controller started with immediate first packet")
     }
 
     fun stop() {
@@ -114,8 +126,13 @@ class SensorController(context: Context, private val dataRepository: DataReposit
         val currentPressure = barometerController?.getCurrentPressure()
         val currentAltitude = barometerController?.getCurrentAltitude()
         
+        // Get GPS data if available
+        val currentLatitude = gpsController?.getCurrentLatitude()
+        val currentLongitude = gpsController?.getCurrentLongitude()
+        val currentAccuracy = gpsController?.getCurrentAccuracy()
+        
         // Only send if we have at least some sensor data
-        if (currentGyroX != null || currentAccelX != null || currentPressure != null) {
+        if (currentGyroX != null || currentAccelX != null || currentPressure != null || currentLatitude != null) {
             val unifiedRecord = UnifiedSensorRecord(
                 timestamp = currentTime,
                 gyroX = currentGyroX,
@@ -124,9 +141,9 @@ class SensorController(context: Context, private val dataRepository: DataReposit
                 accelX = currentAccelX,
                 accelY = currentAccelY,
                 accelZ = currentAccelZ,
-                latitude = null, // GPS handled separately
-                longitude = null,
-                accuracy = null,
+                latitude = currentLatitude,
+                longitude = currentLongitude,
+                accuracy = currentAccuracy,
                 pressure = currentPressure,
                 altitude = currentAltitude,
                 deviceId = "android-${android.os.Build.SERIAL}"
@@ -136,7 +153,7 @@ class SensorController(context: Context, private val dataRepository: DataReposit
             dataRepository.addUnifiedRecord(unifiedRecord)
             
             if (SensorConfig.LOG_SENSOR_DATA) {
-                Log.d(TAG, "Unified packet sent: gyro=(${currentGyroX},${currentGyroY},${currentGyroZ}), accel=(${currentAccelX},${currentAccelY},${currentAccelZ}), pressure=${currentPressure}, altitude=${currentAltitude}")
+                Log.d(TAG, "Unified packet sent: gyro=(${currentGyroX},${currentGyroY},${currentGyroZ}), accel=(${currentAccelX},${currentAccelY},${currentAccelZ}), pressure=${currentPressure}, altitude=${currentAltitude}, lat=${currentLatitude}, lon=${currentLongitude}, acc=${currentAccuracy}")
             }
         }
     }

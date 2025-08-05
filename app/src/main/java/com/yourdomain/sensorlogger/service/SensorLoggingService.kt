@@ -56,6 +56,7 @@ class SensorLoggingService : Service() {
         
         // Connect barometer controller to sensor controller for unified data
         sensorController.setBarometerController(barometerController)
+        sensorController.setGpsController(gpsController)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
