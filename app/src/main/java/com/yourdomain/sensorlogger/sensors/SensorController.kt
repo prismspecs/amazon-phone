@@ -101,6 +101,9 @@ class SensorController(context: Context, private val dataRepository: DataReposit
                 currentGyroY = event.values[1]
                 currentGyroZ = event.values[2]
                 
+                // Update barometer controller with motion data for fusion
+                barometerController?.updateMotionData(currentAccelX, currentAccelY, currentAccelZ, currentGyroX, currentGyroY, currentGyroZ)
+                
                 // Update UI
                 if (SensorConfig.SHOW_SENSOR_DATA_ON_SCREEN) {
                     SensorDataManager.updateGyroscopeData(currentGyroX!!, currentGyroY!!, currentGyroZ!!)
@@ -110,6 +113,9 @@ class SensorController(context: Context, private val dataRepository: DataReposit
                 currentAccelX = event.values[0]
                 currentAccelY = event.values[1]
                 currentAccelZ = event.values[2]
+                
+                // Update barometer controller with motion data for fusion
+                barometerController?.updateMotionData(currentAccelX, currentAccelY, currentAccelZ, currentGyroX, currentGyroY, currentGyroZ)
                 
                 // Update UI
                 if (SensorConfig.SHOW_SENSOR_DATA_ON_SCREEN) {
