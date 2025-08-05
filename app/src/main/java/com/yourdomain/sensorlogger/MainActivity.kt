@@ -15,6 +15,7 @@ import com.yourdomain.sensorlogger.util.SensorDataManager
 class MainActivity : AppCompatActivity() {
 
     private lateinit var startServiceButton: Button
+    private lateinit var stopServiceButton: Button
     private lateinit var statusText: TextView
     private lateinit var accelerometerText: TextView
     private lateinit var gyroscopeText: TextView
@@ -36,6 +37,7 @@ class MainActivity : AppCompatActivity() {
         SensorDataManager.setMainActivity(this)
 
         startServiceButton = findViewById(R.id.start_service_button)
+        stopServiceButton = findViewById(R.id.stop_service_button)
         statusText = findViewById(R.id.status_text)
         accelerometerText = findViewById(R.id.accelerometer_text)
         gyroscopeText = findViewById(R.id.gyroscope_text)
@@ -49,6 +51,10 @@ class MainActivity : AppCompatActivity() {
             } else {
                 PermissionUtils.requestPermissions(this)
             }
+        }
+        
+        stopServiceButton.setOnClickListener {
+            stopLoggingService()
         }
         
         // Start real-time sensor data display if enabled
@@ -72,6 +78,12 @@ class MainActivity : AppCompatActivity() {
         val serviceIntent = Intent(this, SensorLoggingService::class.java)
         startService(serviceIntent)
         statusText.text = "Logging service started."
+    }
+
+    private fun stopLoggingService() {
+        val serviceIntent = Intent(this, SensorLoggingService::class.java)
+        stopService(serviceIntent)
+        statusText.text = "Logging service stopped."
     }
 
     private fun updateUI() {

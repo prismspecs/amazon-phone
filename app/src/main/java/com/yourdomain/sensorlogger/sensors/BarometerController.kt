@@ -15,6 +15,10 @@ class BarometerController(context: Context, private val dataRepository: DataRepo
     private val TAG = "BarometerController"
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private var pressureSensor: Sensor? = null
+    
+    // Store current barometer data for unified records
+    private var currentPressure: Float? = null
+    private var currentAltitude: Float? = null
 
     init {
         pressureSensor = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE)
@@ -36,16 +40,19 @@ class BarometerController(context: Context, private val dataRepository: DataRepo
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_PRESSURE) {
-            val pressure = event.values[0]
-            val altitude = SensorManager.getAltitude(SensorManager.PRESSURE_STANDARD_ATMOSPHERE, pressure)
-            val barometerData = BarometerData(System.currentTimeMillis(), pressure, altitude)
-            dataRepository.addBarometerData(barometerData) // Assuming this method exists
-            Log.d(TAG, "Barometer data recorded: $barometerData")
+            currentPressure = event.values[0]
+            currentAltitude = SensorManager.getAltitude(SensorManager.PRESSURE_STANDARD_ATMOSPHERE, currentPressure!!)
             
             // Send to UI
-            SensorDataManager.updateBarometerData(pressure, altitude)
+            SensorDataManager.updateBarometerData(currentPressure!!, currentAltitude!!)
+            
+            Log.d(TAG, "Barometer data updated: pressure=${currentPressure}, altitude=${currentAltitude}")
         }
     }
+    
+    // Get current barometer data for unified records
+    fun getCurrentPressure(): Float? = currentPressure
+    fun getCurrentAltitude(): Float? = currentAltitude
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
         // Not used

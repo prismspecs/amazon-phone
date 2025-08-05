@@ -7,7 +7,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
 import com.yourdomain.sensorlogger.data.DataRepository
-import com.yourdomain.sensorlogger.data.models.SensorData
+import com.yourdomain.sensorlogger.data.models.UnifiedSensorRecord
 import com.yourdomain.sensorlogger.util.SensorConfig
 import com.yourdomain.sensorlogger.util.SensorDataManager
 import java.util.concurrent.Executors
@@ -20,14 +20,29 @@ class SensorController(context: Context, private val dataRepository: DataReposit
     private var gyroSensor: Sensor? = null
     private var accelSensor: Sensor? = null
     
-    // Throttling system
-    private val throttleExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
-    private var lastProcessingTime = 0L
-    private val minProcessingInterval = 1000L // Minimum 1 second between processing
+    // Reference to barometer controller for unified data
+    private var barometerController: BarometerController? = null
+    
+    // Unified data collection
+    private var currentGyroX: Float? = null
+    private var currentGyroY: Float? = null
+    private var currentGyroZ: Float? = null
+    private var currentAccelX: Float? = null
+    private var currentAccelY: Float? = null
+    private var currentAccelZ: Float? = null
+    
+    // Timer for sending unified packets
+    private val packetExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
+    private var lastPacketTime = 0L
 
     init {
         gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
         accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    }
+    
+    // Set barometer controller reference
+    fun setBarometerController(controller: BarometerController) {
+        barometerController = controller
     }
 
     fun start() {
@@ -43,70 +58,85 @@ class SensorController(context: Context, private val dataRepository: DataReposit
                 Log.d(TAG, "Accelerometer listener registered with ${SensorConfig.ACCELEROMETER_DELAY}μs delay")
             }
         }
-        Log.d(TAG, "Sensor listeners registered with reduced frequency")
+        
+        // Start sending unified packets every second
+        packetExecutor.scheduleAtFixedRate({
+            sendUnifiedPacket()
+        }, 1000, 1000, TimeUnit.MILLISECONDS)
+        
+        Log.d(TAG, "Sensor controller started with unified packet collection")
     }
 
     fun stop() {
         sensorManager.unregisterListener(this)
-        throttleExecutor.shutdown()
+        packetExecutor.shutdown()
         try {
-            if (!throttleExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-                throttleExecutor.shutdownNow()
+            if (!packetExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                packetExecutor.shutdownNow()
             }
         } catch (e: InterruptedException) {
-            throttleExecutor.shutdownNow()
+            packetExecutor.shutdownNow()
         }
-        Log.d(TAG, "Sensor listeners unregistered")
+        Log.d(TAG, "Sensor controller stopped")
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event == null) return
 
-        val currentTime = System.currentTimeMillis()
-        
-        // Throttle processing to prevent excessive data delivery
-        if (currentTime - lastProcessingTime < minProcessingInterval) {
-            return // Skip processing if too soon
-        }
-
-        val timestamp = System.currentTimeMillis()
-        var gyroX: Float? = null
-        var gyroY: Float? = null
-        var gyroZ: Float? = null
-        var accelX: Float? = null
-        var accelY: Float? = null
-        var accelZ: Float? = null
-
         when (event.sensor.type) {
             Sensor.TYPE_GYROSCOPE -> {
-                gyroX = event.values[0]
-                gyroY = event.values[1]
-                gyroZ = event.values[2]
-                // Send to UI only if enabled
+                currentGyroX = event.values[0]
+                currentGyroY = event.values[1]
+                currentGyroZ = event.values[2]
+                
+                // Update UI
                 if (SensorConfig.SHOW_SENSOR_DATA_ON_SCREEN) {
-                    SensorDataManager.updateGyroscopeData(gyroX, gyroY, gyroZ)
+                    SensorDataManager.updateGyroscopeData(currentGyroX!!, currentGyroY!!, currentGyroZ!!)
                 }
             }
             Sensor.TYPE_ACCELEROMETER -> {
-                accelX = event.values[0]
-                accelY = event.values[1]
-                accelZ = event.values[2]
-                // Send to UI only if enabled
+                currentAccelX = event.values[0]
+                currentAccelY = event.values[1]
+                currentAccelZ = event.values[2]
+                
+                // Update UI
                 if (SensorConfig.SHOW_SENSOR_DATA_ON_SCREEN) {
-                    SensorDataManager.updateAccelerometerData(accelX, accelY, accelZ)
+                    SensorDataManager.updateAccelerometerData(currentAccelX!!, currentAccelY!!, currentAccelZ!!)
                 }
             }
         }
+    }
+
+    private fun sendUnifiedPacket() {
+        val currentTime = System.currentTimeMillis()
         
-        val sensorData = SensorData(timestamp, gyroX, gyroY, gyroZ, accelX, accelY, accelZ)
+        // Get barometer data if available
+        val currentPressure = barometerController?.getCurrentPressure()
+        val currentAltitude = barometerController?.getCurrentAltitude()
         
-        // Process data asynchronously to avoid blocking sensor thread
-        throttleExecutor.execute {
-            dataRepository.addSensorData(sensorData)
-            lastProcessingTime = System.currentTimeMillis()
+        // Only send if we have at least some sensor data
+        if (currentGyroX != null || currentAccelX != null || currentPressure != null) {
+            val unifiedRecord = UnifiedSensorRecord(
+                timestamp = currentTime,
+                gyroX = currentGyroX,
+                gyroY = currentGyroY,
+                gyroZ = currentGyroZ,
+                accelX = currentAccelX,
+                accelY = currentAccelY,
+                accelZ = currentAccelZ,
+                latitude = null, // GPS handled separately
+                longitude = null,
+                accuracy = null,
+                pressure = currentPressure,
+                altitude = currentAltitude,
+                deviceId = "android-${android.os.Build.SERIAL}"
+            )
+            
+            // Add to repository
+            dataRepository.addUnifiedRecord(unifiedRecord)
             
             if (SensorConfig.LOG_SENSOR_DATA) {
-                Log.d(TAG, "Sensor data recorded: $sensorData")
+                Log.d(TAG, "Unified packet sent: gyro=(${currentGyroX},${currentGyroY},${currentGyroZ}), accel=(${currentAccelX},${currentAccelY},${currentAccelZ}), pressure=${currentPressure}, altitude=${currentAltitude}")
             }
         }
     }

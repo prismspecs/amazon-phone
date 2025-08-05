@@ -32,13 +32,13 @@ object SensorConfig {
     // Custom delay = 1000000 (1Hz - every second)
     // Custom delay = 2000000 (0.5Hz - every 2 seconds)
     
-    // Accelerometer polling rate - INCREASED for continuous data
-    val ACCELEROMETER_DELAY = 20000  // 50Hz (20ms) - every 20ms for smooth data
+    // Accelerometer polling rate - CHANGED to 1Hz for consistency
+    val ACCELEROMETER_DELAY = 1000000  // 1Hz (1 second) - every second
     
-    // Gyroscope polling rate - INCREASED for continuous data
-    val GYROSCOPE_DELAY = 20000      // 50Hz (20ms) - every 20ms for smooth data
+    // Gyroscope polling rate - CHANGED to 1Hz for consistency
+    val GYROSCOPE_DELAY = 1000000      // 1Hz (1 second) - every second
     
-    // Barometer polling rate - KEPT at reasonable rate
+    // Barometer polling rate - KEPT at 1Hz for consistency
     val BAROMETER_DELAY = 1000000    // 1Hz (1 second) - every second
     
     // GPS location update interval (in milliseconds) - KEPT reasonable

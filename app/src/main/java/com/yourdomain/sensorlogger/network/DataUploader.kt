@@ -39,8 +39,8 @@ class DataUploader(private val context: Context, private val dataRepository: Dat
 
     private suspend fun uploadAll() {
         try {
-            // Gather unified sensor data (reduces null values)
-            val unifiedData = dataRepository.getUnifiedSensorData()
+            // Get unified records directly
+            val unifiedData = dataRepository.getUnifiedRecords()
             val audios = dataRepository.getUnsentAudioData()
             val photos = dataRepository.getUnsentPhotoData()
 

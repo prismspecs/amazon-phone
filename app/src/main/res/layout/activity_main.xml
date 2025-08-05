@@ -16,6 +16,15 @@
             android:layout_gravity="center"
             android:text="Start Logging Service" />
 
+        <Button
+            android:id="@+id/stop_service_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="8dp"
+            android:text="Stop Logging Service"
+            android:backgroundTint="#FF4444" />
+
         <TextView
             android:id="@+id/status_text"
             android:layout_width="wrap_content"

@@ -53,6 +53,9 @@ class SensorLoggingService : Service() {
         audioRecorder = AudioRecorder(this, dataRepository)
         cameraController = CameraController(this, dataRepository)
         dataUploader = DataUploader(this, dataRepository)
+        
+        // Connect barometer controller to sensor controller for unified data
+        sensorController.setBarometerController(barometerController)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
