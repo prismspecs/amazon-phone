@@ -23,27 +23,24 @@ object SensorConfig {
     val ENABLE_AUDIO = true
     val ENABLE_CAMERA = false  // Disabled due to service complexity
     
-    // Sensor polling rates (in microseconds) - INCREASED FREQUENCY
-    // Available options:
-    // SENSOR_DELAY_FASTEST = 0 (as fast as possible)
-    // SENSOR_DELAY_GAME = 20000 (50Hz)
-    // SENSOR_DELAY_UI = 66667 (15Hz)
-    // SENSOR_DELAY_NORMAL = 200000 (5Hz)
-    // Custom delay = 1000000 (1Hz - every second)
-    // Custom delay = 2000000 (0.5Hz - every 2 seconds)
+    // UNIFIED TIMING SYSTEM
+    // All data should adhere to standard timing intervals:
+    // - Gyro/Accel/Baro: Every second (1Hz)
+    // - GPS: Every 15 seconds
+    // - Upload: Every 15 seconds
+    // - Audio: Covers same period as upload interval (15-second cycles)
     
-    // Accelerometer polling rate - CHANGED to 1Hz for consistency
-    val ACCELEROMETER_DELAY = 1000000  // 1Hz (1 second) - every second
+    // High-frequency sensors (every second)
+    val ACCELEROMETER_DELAY = 1000000  // 1Hz (1 second)
+    val GYROSCOPE_DELAY = 1000000      // 1Hz (1 second)
+    val BAROMETER_DELAY = 1000000      // 1Hz (1 second)
     
-    // Gyroscope polling rate - CHANGED to 1Hz for consistency
-    val GYROSCOPE_DELAY = 1000000      // 1Hz (1 second) - every second
+    // GPS location update interval (every 15 seconds)
+    val GPS_UPDATE_INTERVAL = 15000L      // 15 seconds
+    val GPS_FASTEST_INTERVAL = 15000L    // 15 seconds
     
-    // Barometer polling rate - KEPT at 1Hz for consistency
-    val BAROMETER_DELAY = 1000000    // 1Hz (1 second) - every second
-    
-    // GPS location update interval (in milliseconds) - KEPT reasonable
-    val GPS_UPDATE_INTERVAL = 30000L      // 30 seconds
-    val GPS_FASTEST_INTERVAL = 15000L     // 15 seconds
+    // Upload interval (every 15 seconds)
+    val UPLOAD_INTERVAL = 15000L         // 15 seconds
     
     // Audio recording settings
     val AUDIO_SAMPLE_RATE = 44100         // Hz
@@ -53,12 +50,9 @@ object SensorConfig {
     // Photo capture interval (in milliseconds) - KEPT reasonable
     val PHOTO_INTERVAL = 60 * 60 * 1000L  // 60 minutes
     
-    // Data upload interval (in milliseconds) - REDUCED for testing
-    val UPLOAD_INTERVAL = 30 * 1000L // 30 seconds (TESTING - for immediate feedback)
-    
-    // Data batching settings - ADJUSTED for continuous data
-    val BATCH_SIZE = 10                   // Reduced - process smaller batches
-    val BATCH_TIMEOUT = 10000L            // 10 seconds - flush batch more frequently
+    // Data batching settings - ADJUSTED for 15-second timing
+    val BATCH_SIZE = 15                   // 15 seconds worth of data (15 records at 1Hz)
+    val BATCH_TIMEOUT = 15000L            // 15 seconds - flush batch every 15 seconds
     val ENABLE_DATA_BATCHING = true       // Enable batching to reduce frequency
     
     // Data filtering settings - RELAXED for continuous data

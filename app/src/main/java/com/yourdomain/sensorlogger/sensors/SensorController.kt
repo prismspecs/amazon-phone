@@ -13,8 +13,9 @@ import com.yourdomain.sensorlogger.util.SensorDataManager
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
+import java.util.UUID
 
-class SensorController(context: Context, private val dataRepository: DataRepository) : SensorEventListener {
+class SensorController(private val context: Context, private val dataRepository: DataRepository) : SensorEventListener {
     private val TAG = "SensorController"
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private var gyroSensor: Sensor? = null
@@ -152,7 +153,7 @@ class SensorController(context: Context, private val dataRepository: DataReposit
                 accuracy = currentAccuracy,
                 pressure = currentPressure,
                 altitude = currentAltitude,
-                deviceId = "android-${android.os.Build.SERIAL}"
+                deviceId = generateDeviceId()
             )
             
             // Add to repository
@@ -166,5 +167,20 @@ class SensorController(context: Context, private val dataRepository: DataReposit
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
         // Not used
+    }
+    
+    private fun generateDeviceId(): String {
+        return try {
+            // Try to get a unique device identifier
+            val androidId = android.provider.Settings.Secure.getString(
+                context.contentResolver,
+                android.provider.Settings.Secure.ANDROID_ID
+            ) ?: UUID.randomUUID().toString()
+            
+            "android-${androidId}"
+        } catch (e: Exception) {
+            // Fallback to random UUID
+            "android-${UUID.randomUUID()}"
+        }
     }
 } 

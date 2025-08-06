@@ -782,6 +782,125 @@ app.delete('/data/all', (req, res) => {
     });
 });
 
+// Get all audio files
+app.get('/data/audio', (req, res) => {
+    const limit = req.query.limit || 100;
+    const deviceId = req.query.device;
+    
+    let query = `SELECT * FROM audio_files ORDER BY timestamp DESC LIMIT ?`;
+    let params = [limit];
+    
+    if (deviceId) {
+        query = `SELECT * FROM audio_files WHERE device_id = ? ORDER BY timestamp DESC LIMIT ?`;
+        params = [deviceId, limit];
+    }
+    
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else {
+            res.json({
+                count: rows.length,
+                data: rows
+            });
+        }
+    });
+});
+
+// Get audio file by ID
+app.get('/data/audio/:id', (req, res) => {
+    const audioId = req.params.id;
+    
+    db.get(`SELECT * FROM audio_files WHERE id = ?`, [audioId], (err, row) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else if (!row) {
+            res.status(404).json({ error: 'Audio file not found' });
+        } else {
+            res.json(row);
+        }
+    });
+});
+
+// Download audio file
+app.get('/download/audio/:id', (req, res) => {
+    const audioId = req.params.id;
+    
+    db.get(`SELECT * FROM audio_files WHERE id = ?`, [audioId], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        } else if (!row) {
+            return res.status(404).json({ error: 'Audio file not found' });
+        }
+        
+        const filePath = row.file_path;
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'Audio file not found on disk' });
+        }
+        
+        // Extract filename from path
+        const filename = path.basename(filePath);
+        
+        res.setHeader('Content-Type', 'audio/mp4');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+    });
+});
+
+// Get all photo files
+app.get('/data/photos', (req, res) => {
+    const limit = req.query.limit || 100;
+    const deviceId = req.query.device;
+    
+    let query = `SELECT * FROM photo_files ORDER BY timestamp DESC LIMIT ?`;
+    let params = [limit];
+    
+    if (deviceId) {
+        query = `SELECT * FROM photo_files WHERE device_id = ? ORDER BY timestamp DESC LIMIT ?`;
+        params = [deviceId, limit];
+    }
+    
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else {
+            res.json({
+                count: rows.length,
+                data: rows
+            });
+        }
+    });
+});
+
+// Download photo file
+app.get('/download/photo/:id', (req, res) => {
+    const photoId = req.params.id;
+    
+    db.get(`SELECT * FROM photo_files WHERE id = ?`, [photoId], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        } else if (!row) {
+            return res.status(404).json({ error: 'Photo file not found' });
+        }
+        
+        const filePath = row.file_path;
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'Photo file not found on disk' });
+        }
+        
+        // Extract filename from path
+        const filename = path.basename(filePath);
+        
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        
+        const fileStream = fs.createReadStream(filePath);
+        fileStream.pipe(res);
+    });
+});
+
 // Delete data older than X days
 app.delete('/data/older-than/:days', (req, res) => {
     const days = parseInt(req.params.days);

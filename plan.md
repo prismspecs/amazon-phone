@@ -52,12 +52,14 @@ A comprehensive Android sensor logging system with server-side data collection a
 - `DataUploader.kt` - Server communication
 - `UnifiedSensorRecord.kt` - Combined sensor data model
 
-### **Sensor Configuration**
-- **Gyroscope**: 50Hz polling (20ms intervals) for smooth motion tracking
-- **Accelerometer**: 50Hz polling (20ms intervals) for accurate orientation
-- **Barometer**: 1Hz polling for altitude changes
-- **GPS**: 30-second intervals for location tracking
-- **Batch Processing**: 10-second intervals or 5+ readings for frequent uploads
+### **Unified Timing System**
+- **Gyroscope**: 1Hz polling (1-second intervals) for motion tracking
+- **Accelerometer**: 1Hz polling (1-second intervals) for orientation
+- **Barometer**: 1Hz polling (1-second intervals) for altitude changes
+- **GPS**: 15-second intervals for location tracking
+- **Audio Recording**: 15-second cycles synchronized with uploads
+- **Upload Interval**: 15 seconds for all data types
+- **Data Association**: All data types use timestamp-based naming for correlation
 
 ### **Data Format**
 ```kotlin
@@ -154,14 +156,16 @@ const targetDataTime = this.dataStartTime + elapsedPlaybackTime;
 
 ## 🔄 **Data Flow**
 
-### **Collection Pipeline**
-1. **Sensor Polling** → Android sensors at 50Hz (gyro/accel) and 1Hz (barometer)
-2. **Motion Filtering** → Disabled for continuous data collection
-3. **Queue Management** → Buffer data in memory
-4. **Batch Processing** → Group by 1-second time windows
-5. **Unified Records** → Combine all sensor types with timestamps
-6. **Server Upload** → HTTP POST every 30 seconds
-7. **Database Storage** → SQLite with automatic indexing
+### **Unified Collection Pipeline**
+1. **Sensor Polling** → Android sensors at 1Hz (gyro/accel/baro) and 15s (GPS)
+2. **Audio Recording** → 15-second cycles synchronized with upload intervals
+3. **Motion Filtering** → Disabled for continuous data collection
+4. **Queue Management** → Buffer data in memory with timestamp association
+5. **Batch Processing** → Group by 15-second time windows
+6. **Unified Records** → Combine all sensor types with timestamps
+7. **File Upload** → Audio files with timestamp-based naming
+8. **Server Upload** → HTTP POST every 15 seconds
+9. **Database Storage** → SQLite with automatic indexing and file associations
 
 ### **Visualization Pipeline**
 1. **Data Download** → `quick_download.sh` script
@@ -283,10 +287,11 @@ npm start
 ## 📈 **Performance Metrics**
 
 ### **Android App**
-- **Battery Impact**: <10% additional drain (increased for testing)
-- **Data Volume**: ~5MB/hour of sensor data (increased frequency)
-- **Upload Frequency**: Every 30 seconds or 5+ readings
-- **Sensor Accuracy**: 50Hz motion-tracked readings
+- **Battery Impact**: <10% additional drain (optimized for unified timing)
+- **Data Volume**: ~2MB/hour of sensor data (1Hz polling)
+- **Upload Frequency**: Every 15 seconds
+- **Sensor Accuracy**: 1Hz motion-tracked readings with 15s GPS updates
+- **Audio Recording**: 15-second cycles synchronized with uploads
 
 ### **Server**
 - **Response Time**: <100ms for data queries
@@ -305,11 +310,12 @@ npm start
 
 ## 🔄 **Recent Improvements**
 
-### **Data Collection Enhancements**
-- **Increased Sensor Frequency**: 50Hz polling for gyro/accel sensors
-- **Disabled Motion Filtering**: Capture all movements for testing
-- **Reduced Batching**: 10-second intervals and 5+ reading thresholds
-- **Faster Uploads**: 30-second upload intervals for immediate feedback
+### **Unified Timing System Implementation**
+- **Standardized Intervals**: 1Hz for gyro/accel/baro, 15s for GPS, 15s for uploads
+- **Audio Synchronization**: 15-second recording cycles aligned with upload intervals
+- **Timestamp Association**: All data types use consistent timestamp-based naming
+- **File Upload Integration**: Audio files uploaded with timestamp-based filenames
+- **Data Correlation**: Easy association between sensor data and audio recordings
 
 ### **Visualization Improvements**
 - **Real-time Playback**: Uses actual sensor timestamps for accurate replay

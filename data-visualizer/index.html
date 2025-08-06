@@ -181,6 +181,17 @@
                 <button id="reset-btn" disabled>🔄 Reset</button>
                 <button id="export-btn" disabled>💾 Export</button>
                 
+                <!-- Audio controls -->
+                <div style="margin-top: 10px; border-top: 1px solid #333; padding-top: 10px;">
+                    <label for="audio-input" class="file-label">🎵 Load Audio File</label>
+                    <input type="file" id="audio-input" accept=".mp3,.wav,.m4a,.aac,.ogg,.webm" style="display: none;">
+                    <button id="audio-play-btn" disabled style="background: #ff6600;">🔊 Play Audio</button>
+                    <button id="audio-stop-btn" disabled style="background: #ff3300;">🔇 Stop Audio</button>
+                    <div style="margin-top: 5px; font-size: 11px; color: #666;">
+                        <span id="audio-status">No audio loaded</span>
+                    </div>
+                </div>
+                
                 <!-- Timeline component -->
                 <div id="timeline-container" style="margin-top: 15px; display: none;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">

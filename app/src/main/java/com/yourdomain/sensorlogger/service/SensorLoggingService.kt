@@ -75,7 +75,7 @@ class SensorLoggingService : Service() {
             cameraController.start()
         }
         
-        // Schedule tasks with reduced frequency
+        // Schedule tasks with reduced frequency - wait for first 15-second cycle
         handler.postDelayed(scheduledTask, SensorConfig.UPLOAD_INTERVAL)
 
         return START_STICKY

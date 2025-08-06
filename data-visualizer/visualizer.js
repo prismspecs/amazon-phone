@@ -44,6 +44,14 @@ class PhoneDataVisualizer {
         this.fileInput = document.getElementById('file-input');
         this.loading = document.getElementById('loading');
         
+        // Audio elements
+        this.audioInput = document.getElementById('audio-input');
+        this.audioPlayBtn = document.getElementById('audio-play-btn');
+        this.audioStopBtn = document.getElementById('audio-stop-btn');
+        this.audioStatus = document.getElementById('audio-status');
+        this.audioElement = null;
+        this.audioStartTime = 0;  // When audio should start relative to data
+        
         // Timeline elements
         this.timelineContainer = document.getElementById('timeline-container');
         this.timelineTrack = document.getElementById('timeline-track');
@@ -228,6 +236,11 @@ class PhoneDataVisualizer {
         this.resetBtn.addEventListener('click', () => this.reset());
         this.exportBtn.addEventListener('click', () => this.exportData());
         
+        // Audio controls
+        this.audioInput.addEventListener('change', (e) => this.handleAudioLoad(e));
+        this.audioPlayBtn.addEventListener('click', () => this.playAudio());
+        this.audioStopBtn.addEventListener('click', () => this.stopAudio());
+        
         // Timeline event listeners
         this.timelineTrack.addEventListener('click', (e) => this.seekToPosition(e));
         this.timelineHandle.addEventListener('mousedown', (e) => this.startDragging(e));
@@ -250,6 +263,73 @@ class PhoneDataVisualizer {
             }
         };
         reader.readAsText(file);
+    }
+
+    handleAudioLoad(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Check file format
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+        const supportedFormats = ['mp3', 'wav', 'm4a', 'aac', 'ogg', 'webm'];
+        
+        if (!supportedFormats.includes(fileExtension)) {
+            this.audioStatus.textContent = `Unsupported format: ${fileExtension}. Supported: ${supportedFormats.join(', ')}`;
+            console.warn(`Unsupported audio format: ${fileExtension}`);
+            return;
+        }
+
+        // Create audio element
+        this.audioElement = new Audio();
+        this.audioElement.preload = 'auto';
+        
+        // Create object URL for the audio file
+        const audioUrl = URL.createObjectURL(file);
+        this.audioElement.src = audioUrl;
+        
+        // Set up audio event listeners
+        this.audioElement.addEventListener('loadedmetadata', () => {
+            this.audioStatus.textContent = `Audio loaded: ${file.name} (${this.formatTime(this.audioElement.duration)})`;
+            this.audioPlayBtn.disabled = false;
+            this.audioStopBtn.disabled = false;
+            console.log(`Audio loaded: ${file.name}, duration: ${this.audioElement.duration}s`);
+        });
+        
+        this.audioElement.addEventListener('error', (e) => {
+            console.error('Audio loading error:', e);
+            this.audioStatus.textContent = `Error loading audio file: ${fileExtension} format may not be supported`;
+        });
+        
+        this.audioElement.addEventListener('ended', () => {
+            this.audioStatus.textContent = 'Audio playback ended';
+        });
+    }
+
+    playAudio() {
+        if (!this.audioElement) return;
+        
+        if (this.isPlaying && this.sensorData.length > 0) {
+            // Synchronize audio with sensor data playback
+            const currentDataTime = this.dataStartTime + (performance.now() - this.playbackStartTime) * this.playbackSpeed;
+            const audioOffset = (currentDataTime - this.dataStartTime) / 1000; // Convert to seconds
+            
+            this.audioElement.currentTime = Math.max(0, audioOffset);
+            this.audioElement.play();
+            this.audioStatus.textContent = 'Audio playing (synchronized)';
+        } else {
+            // Play audio from beginning
+            this.audioElement.currentTime = 0;
+            this.audioElement.play();
+            this.audioStatus.textContent = 'Audio playing';
+        }
+    }
+
+    stopAudio() {
+        if (!this.audioElement) return;
+        
+        this.audioElement.pause();
+        this.audioElement.currentTime = 0;
+        this.audioStatus.textContent = 'Audio stopped';
     }
 
     loadSensorData(data) {
@@ -368,17 +448,38 @@ class PhoneDataVisualizer {
         this.playBtn.disabled = true;
         this.pauseBtn.disabled = false;
         this.playbackStartTime = performance.now();
+        
+        // Start audio if available
+        if (this.audioElement && this.audioElement.readyState >= 2) {
+            const currentDataTime = this.dataStartTime + (performance.now() - this.playbackStartTime) * this.playbackSpeed;
+            const audioOffset = (currentDataTime - this.dataStartTime) / 1000;
+            this.audioElement.currentTime = Math.max(0, audioOffset);
+            this.audioElement.play();
+            this.audioStatus.textContent = 'Audio playing (synchronized)';
+        }
     }
 
     pause() {
         this.isPlaying = false;
         this.playBtn.disabled = false;
         this.pauseBtn.disabled = true;
+        
+        // Pause audio if playing
+        if (this.audioElement && !this.audioElement.paused) {
+            this.audioElement.pause();
+            this.audioStatus.textContent = 'Audio paused';
+        }
     }
 
     reset() {
         this.currentIndex = 0;
         this.pause();
+        
+        // Reset audio if available
+        if (this.audioElement) {
+            this.audioElement.currentTime = 0;
+            this.audioStatus.textContent = 'Audio reset';
+        }
         
         // Reset phone position and rotation
         if (this.phoneModel) {
