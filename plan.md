@@ -151,6 +151,8 @@ const targetDataTime = this.dataStartTime + elapsedPlaybackTime;
 - **Interpolation**: Smooth transitions between data points
 - **Performance**: 60fps rendering with efficient updates
 - **Time-based Playback**: Accurate replay using sensor timestamps
+- **Fixed Batch Size**: Always exactly 15 sensor records per batch (engineered constraint)
+- **Reverse Chronological Order**: Server returns data in newest-first order (higher timestamps first)
 
 ---
 

@@ -54,10 +54,9 @@ class AudioRecorder(
             return
         }
 
-        recordingStartTime = System.currentTimeMillis()
-        
-        // Create filename with timestamp for easy association with sensor data
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date(recordingStartTime))
+        // Create filename with placeholder timestamp (will be updated after successful start)
+        val placeholderTimestamp = System.currentTimeMillis()
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date(placeholderTimestamp))
         val filename = "audio_${timestamp}.m4a"
         
         audioFile = File(context.getExternalFilesDir(null), filename)
@@ -72,6 +71,8 @@ class AudioRecorder(
             try {
                 prepare()
                 start()
+                // Set the actual recording start time AFTER successful start
+                recordingStartTime = System.currentTimeMillis()
                 isRecording = true
                 Log.d(TAG, "Audio recording started: $filename (start time: $recordingStartTime)")
             } catch (e: IOException) {

@@ -1,7 +1,6 @@
-Downloaded: Wed Aug  6 10:49:42 AM CEST 2025
-Audio file: audio_19.m4a
-Audio timestamp: 1754470165845
-Audio duration: 15376ms
+Downloaded: Wed Aug  6 11:33:21 AM CEST 2025
+Audio file: audio_21.m4a
+Audio timestamp: 1754472780058
+Audio duration: 15206ms
 Audio device: android-b8d85b2c7713ae51
-Sensor records: 15
-Sensor time range: 1754470165845 to 1754470181221
+Sensor records: 15 (should be exactly 15)

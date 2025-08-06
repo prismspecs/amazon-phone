@@ -298,14 +298,37 @@ app.get('/summary', (req, res) => {
 app.get('/data/sensors', (req, res) => {
     const limit = req.query.limit || 100;
     const deviceId = req.query.device;
+    const startTime = req.query.start_time;
+    const endTime = req.query.end_time;
     
-    let query = `SELECT * FROM sensor_data ORDER BY timestamp DESC LIMIT ?`;
-    let params = [limit];
+    let query = `SELECT * FROM sensor_data`;
+    let params = [];
+    let conditions = [];
     
     if (deviceId) {
-        query = `SELECT * FROM sensor_data WHERE device_id = ? ORDER BY timestamp DESC LIMIT ?`;
-        params = [deviceId, limit];
+        conditions.push('device_id = ?');
+        params.push(deviceId);
     }
+    
+    if (startTime && endTime) {
+        // For reverse chronological order, we want records between endTime and startTime
+        // since newer records have higher timestamps
+        conditions.push('timestamp >= ? AND timestamp <= ?');
+        params.push(endTime, startTime);
+    } else if (startTime) {
+        conditions.push('timestamp <= ?');
+        params.push(startTime);
+    } else if (endTime) {
+        conditions.push('timestamp >= ?');
+        params.push(endTime);
+    }
+    
+    if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
+    }
+    
+    query += ' ORDER BY timestamp DESC LIMIT ?';
+    params.push(limit);
     
     db.all(query, params, (err, rows) => {
         if (err) {

@@ -177,15 +177,15 @@ download_latest_chunk() {
     local audio_start=$audio_timestamp
     local audio_end=$((audio_start + audio_duration))
     
-    print_status "Looking for sensor data between ${audio_start} and ${audio_end}"
+               print_status "Getting latest 15 sensor records for device $audio_device"
     
-    # Get sensor data for the same device and time period
-    local sensor_url="$SERVER_URL/data/sensors"
-    local sensor_params="device=$audio_device&start_time=$audio_start&end_time=$audio_end"
-    
-    if [ -n "$device_id" ]; then
-        sensor_params="$sensor_params&device=$device_id"
-    fi
+               # Get the latest 15 sensor records for the device (engineered batch size)
+           local sensor_url="$SERVER_URL/data/sensors"
+           local sensor_params="device=$audio_device&limit=15"
+           
+           if [ -n "$device_id" ]; then
+               sensor_params="device=$device_id&limit=15"
+           fi
     
     sensor_url="$sensor_url?$sensor_params"
     
@@ -229,14 +229,13 @@ download_latest_chunk() {
     fi
     
     # Create info file with synchronization details
-    cat > "$DOWNLOAD_DIR/info.txt" << EOF
+               cat > "$DOWNLOAD_DIR/info.txt" << EOF
 Downloaded: $(date)
 Audio file: audio_${audio_id}.m4a
 Audio timestamp: $audio_start
 Audio duration: ${audio_duration}ms
 Audio device: $audio_device
-Sensor records: $sensor_count
-Sensor time range: $audio_start to $audio_end
+Sensor records: $sensor_count (should be exactly 15)
 EOF
     
     print_success "Synchronized chunk downloaded to $DOWNLOAD_DIR"
