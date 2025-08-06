@@ -177,14 +177,14 @@ download_latest_chunk() {
     local audio_start=$audio_timestamp
     local audio_end=$((audio_start + audio_duration))
     
-               print_status "Getting latest 15 sensor records for device $audio_device"
+               print_status "Getting latest 30 sensor records for device $audio_device"
     
-               # Get the latest 15 sensor records for the device (engineered batch size)
+               # Get the latest 30 sensor records for the device (engineered batch size)
            local sensor_url="$SERVER_URL/data/sensors"
-           local sensor_params="device=$audio_device&limit=15"
+           local sensor_params="device=$audio_device&limit=30"
            
            if [ -n "$device_id" ]; then
-               sensor_params="device=$device_id&limit=15"
+               sensor_params="device=$device_id&limit=30"
            fi
     
     sensor_url="$sensor_url?$sensor_params"
@@ -207,7 +207,7 @@ download_latest_chunk() {
     echo "$sensor_response" | jq -c '.data' > "$DOWNLOAD_DIR/sensor_data.json"
     
     local sensor_count=$(echo "$sensor_response" | jq '.data | length')
-    print_success "Found $sensor_count sensor records for audio time period"
+               print_success "Found $sensor_count sensor records for audio time period (should be exactly 30)"
     
     # Download the audio file
     mkdir -p "$DOWNLOAD_DIR/audio"
@@ -235,7 +235,7 @@ Audio file: audio_${audio_id}.m4a
 Audio timestamp: $audio_start
 Audio duration: ${audio_duration}ms
 Audio device: $audio_device
-Sensor records: $sensor_count (should be exactly 15)
+Sensor records: $sensor_count (should be exactly 30)
 EOF
     
     print_success "Synchronized chunk downloaded to $DOWNLOAD_DIR"

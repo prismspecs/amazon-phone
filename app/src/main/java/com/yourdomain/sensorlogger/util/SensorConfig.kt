@@ -26,21 +26,25 @@ object SensorConfig {
     // UNIFIED TIMING SYSTEM
     // All data should adhere to standard timing intervals:
     // - Gyro/Accel/Baro: Every second (1Hz)
-    // - GPS: Every 15 seconds
-    // - Upload: Every 15 seconds
-    // - Audio: Covers same period as upload interval (15-second cycles)
+    // - GPS: Every 30 seconds
+// - Upload: Every 30 seconds
+// - Audio: Covers same period as upload interval (30-second cycles)
     
+    // Main timing configuration - CHANGE THIS TO MODIFY ALL TIMING
+    val MAIN_INTERVAL_SECONDS = 30L       // Main interval for all operations (30 seconds)
+    val MAIN_INTERVAL_MS = MAIN_INTERVAL_SECONDS * 1000L
+
     // High-frequency sensors (every second)
     val ACCELEROMETER_DELAY = 1000000  // 1Hz (1 second)
     val GYROSCOPE_DELAY = 1000000      // 1Hz (1 second)
     val BAROMETER_DELAY = 1000000      // 1Hz (1 second)
     
-    // GPS location update interval (every 15 seconds)
-    val GPS_UPDATE_INTERVAL = 15000L      // 15 seconds
-    val GPS_FASTEST_INTERVAL = 15000L    // 15 seconds
-    
-    // Upload interval (every 15 seconds)
-    val UPLOAD_INTERVAL = 15000L         // 15 seconds
+    // GPS location update interval (every 30 seconds)
+    val GPS_UPDATE_INTERVAL = MAIN_INTERVAL_MS      // 30 seconds
+    val GPS_FASTEST_INTERVAL = MAIN_INTERVAL_MS    // 30 seconds
+
+    // Upload interval (every 30 seconds)
+    val UPLOAD_INTERVAL = MAIN_INTERVAL_MS         // 30 seconds
     
     // Audio recording settings
     val AUDIO_SAMPLE_RATE = 44100         // Hz
@@ -49,10 +53,10 @@ object SensorConfig {
     
     // Photo capture interval (in milliseconds) - KEPT reasonable
     val PHOTO_INTERVAL = 60 * 60 * 1000L  // 60 minutes
-    
-    // Data batching settings - ADJUSTED for 15-second timing
-    val BATCH_SIZE = 15                   // 15 seconds worth of data (15 records at 1Hz)
-    val BATCH_TIMEOUT = 15000L            // 15 seconds - flush batch every 15 seconds
+
+    // Data batching settings - DERIVED from main interval
+    val BATCH_SIZE = MAIN_INTERVAL_SECONDS.toInt()  // 30 seconds worth of data (30 records at 1Hz)
+    val BATCH_TIMEOUT = MAIN_INTERVAL_MS            // 30 seconds - flush batch every 30 seconds
     val ENABLE_DATA_BATCHING = true       // Enable batching to reduce frequency
     
     // Data filtering settings - RELAXED for continuous data

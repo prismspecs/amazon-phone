@@ -29,11 +29,11 @@ class DataRepository {
         Log.d(TAG, "🚀 Starting batch timer immediately at ${System.currentTimeMillis()}")
         batchExecutor.scheduleAtFixedRate({
             Log.d(TAG, "🕐 Batch executor triggered at ${System.currentTimeMillis()}")
-            // Only flush if we have exactly 15 records, otherwise wait
-            if (currentBatch.size == 15) {
+            // Only flush if we have exactly BATCH_SIZE records, otherwise wait
+if (currentBatch.size == SensorConfig.BATCH_SIZE) {
                 flushCurrentBatch()
             } else {
-                Log.d(TAG, "⏳ Timer triggered but only ${currentBatch.size}/15 records - waiting")
+                Log.d(TAG, "⏳ Timer triggered but only ${currentBatch.size}/${SensorConfig.BATCH_SIZE} records - waiting")
             }
         }, SensorConfig.BATCH_TIMEOUT, SensorConfig.BATCH_TIMEOUT, TimeUnit.MILLISECONDS)
     }
@@ -45,10 +45,10 @@ class DataRepository {
             val currentSize = currentBatch.size
             Log.d(TAG, "➕ Added to batch: timestamp=${record.timestamp}, batch size=${currentSize}")
             
-            // Log when we reach exactly 15 records
-            if (currentSize == 15) {
-                Log.d(TAG, "🎯 Batch reached exactly 15 records!")
-                // Force flush immediately when we reach 15 records
+            // Log when we reach exactly BATCH_SIZE records
+            if (currentSize == SensorConfig.BATCH_SIZE) {
+                Log.d(TAG, "🎯 Batch reached exactly ${SensorConfig.BATCH_SIZE} records!")
+                // Force flush immediately when we reach BATCH_SIZE records
                 flushCurrentBatch()
             }
         }
@@ -58,8 +58,8 @@ class DataRepository {
         val currentSize = currentBatch.size
         Log.d(TAG, "🔄 Flush called with ${currentSize} records in current batch")
         
-        // Only flush if we have exactly 15 records
-        if (currentSize == 15) {
+        // Only flush if we have exactly BATCH_SIZE records
+        if (currentSize == SensorConfig.BATCH_SIZE) {
             val batchData = currentBatch.toList()
             currentBatch.clear()
             completedBatches.add(batchData)
@@ -73,7 +73,7 @@ class DataRepository {
                 Log.d(TAG, "⏱️ Batch time span: ${duration} seconds (${firstTime} to ${lastTime})")
             }
         } else {
-            Log.d(TAG, "⏳ Waiting for exactly 15 records: ${currentSize}/15")
+            Log.d(TAG, "⏳ Waiting for exactly ${SensorConfig.BATCH_SIZE} records: ${currentSize}/${SensorConfig.BATCH_SIZE}")
         }
     }
     
@@ -90,7 +90,7 @@ class DataRepository {
         }
         
         // DO NOT include current batch - wait for it to complete
-        // This ensures we only get full 15-second chunks
+        // This ensures we only get full ${SensorConfig.BATCH_SIZE}-second chunks
         
         return allRecords
     }

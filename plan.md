@@ -56,9 +56,9 @@ A comprehensive Android sensor logging system with server-side data collection a
 - **Gyroscope**: 1Hz polling (1-second intervals) for motion tracking
 - **Accelerometer**: 1Hz polling (1-second intervals) for orientation
 - **Barometer**: 1Hz polling (1-second intervals) for altitude changes
-- **GPS**: 15-second intervals for location tracking
-- **Audio Recording**: 15-second cycles synchronized with uploads
-- **Upload Interval**: 15 seconds for all data types
+- **GPS**: 30-second intervals for location tracking
+- **Audio Recording**: 30-second cycles synchronized with uploads
+- **Upload Interval**: 30 seconds for all data types
 - **Data Association**: All data types use timestamp-based naming for correlation
 
 ### **Data Format**
@@ -151,7 +151,7 @@ const targetDataTime = this.dataStartTime + elapsedPlaybackTime;
 - **Interpolation**: Smooth transitions between data points
 - **Performance**: 60fps rendering with efficient updates
 - **Time-based Playback**: Accurate replay using sensor timestamps
-- **Fixed Batch Size**: Always exactly 15 sensor records per batch (engineered constraint)
+- **Fixed Batch Size**: Always exactly 30 sensor records per batch (engineered constraint)
 - **Reverse Chronological Order**: Server returns data in newest-first order (higher timestamps first)
 
 ---
@@ -163,10 +163,10 @@ const targetDataTime = this.dataStartTime + elapsedPlaybackTime;
 2. **Audio Recording** → 15-second cycles synchronized with upload intervals
 3. **Motion Filtering** → Disabled for continuous data collection
 4. **Queue Management** → Buffer data in memory with timestamp association
-5. **Batch Processing** → Group by 15-second time windows
+5. **Batch Processing** → Group by 30-second time windows
 6. **Unified Records** → Combine all sensor types with timestamps
 7. **File Upload** → Audio files with timestamp-based naming
-8. **Server Upload** → HTTP POST every 15 seconds
+8. **Server Upload** → HTTP POST every 30 seconds
 9. **Database Storage** → SQLite with automatic indexing and file associations
 
 ### **Visualization Pipeline**

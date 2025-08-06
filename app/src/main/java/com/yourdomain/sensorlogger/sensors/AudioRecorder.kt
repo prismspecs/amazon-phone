@@ -23,7 +23,7 @@ class AudioRecorder(
     private var recordingStartTime: Long = 0
     private var isRecording = false
     
-    // Handler for 15-second recording cycles
+    // Handler for ${SensorConfig.MAIN_INTERVAL_SECONDS}-second recording cycles
     private val handler = Handler(Looper.getMainLooper())
     private val recordingRunnable = object : Runnable {
         override fun run() {
@@ -35,10 +35,10 @@ class AudioRecorder(
     }
 
     fun start() {
-        Log.d(TAG, "Starting audio recorder with 15-second cycles")
+        Log.d(TAG, "Starting audio recorder with ${SensorConfig.MAIN_INTERVAL_SECONDS}-second cycles")
         startNewRecording()
         
-        // Schedule 15-second recording cycles
+        // Schedule ${SensorConfig.MAIN_INTERVAL_SECONDS}-second recording cycles
         handler.postDelayed(recordingRunnable, SensorConfig.UPLOAD_INTERVAL)
     }
 

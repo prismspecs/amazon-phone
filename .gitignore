@@ -116,6 +116,16 @@ test_*.js
 *.json.bak
 sensor_data_*.json
 
+# Audio files
+*.m4a
+*.mp3
+*.wav
+*.aac
+*.ogg
+*.webm
+*.3gp
+audio_*
+
 # Temporary files
 *.tmp
 *.temp
